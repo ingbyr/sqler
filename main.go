@@ -39,10 +39,11 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+			line = strings.TrimSpace(line)
 			if line == "q" {
 				os.Exit(0)
 			}
-			sqler.Exec(false, strings.TrimSpace(line))
+			sqler.Exec(false, line)
 		}
 	}
 
