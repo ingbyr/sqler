@@ -15,7 +15,7 @@ var (
 
 func init() {
 	flag.StringVar(&flagSqlFile, "f", "", "sql file path")
-	flag.BoolVar(&flagInteractive, "i", false, "interactive mode")
+	flag.BoolVar(&flagInteractive, "i", true, "interactive mode")
 	flag.Parse()
 }
 
@@ -34,6 +34,7 @@ func main() {
 		fmt.Println("start mysql shell ...")
 		scanner := bufio.NewReader(os.Stdin)
 		for {
+			fmt.Printf("> ")
 			line, err := scanner.ReadString('\n')
 			if err != nil {
 				panic(err)
