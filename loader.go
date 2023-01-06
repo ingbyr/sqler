@@ -29,7 +29,10 @@ func LoadSqlFile(sqlFilePath string) []string {
 	for scanner.Scan() {
 		stmt := strings.Replace(scanner.Text(), "\r\n", " ", -1)
 		stmt = strings.Replace(stmt, "\n", " ", -1)
-		stmts = append(stmts, strings.TrimSpace(stmt))
+		stmt = strings.TrimSpace(stmt)
+		if stmt != "" {
+			stmts = append(stmts, stmt)
+		}
 	}
 	return stmts
 }
