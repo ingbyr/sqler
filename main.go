@@ -16,9 +16,9 @@ var (
 )
 
 func init() {
-	flag.StringVar(&flagSqlFile, "f", "", "sql文件路径")
-	flag.BoolVar(&flagInteractive, "i", false, "交互模式")
-	flag.BoolVar(&flagParallel, "p", false, "并行执行sql")
+	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
+	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
+	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行sql")
 	flag.Parse()
 }
 
