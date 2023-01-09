@@ -22,6 +22,11 @@ func parseFlags() {
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
 	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行sql")
 	flag.Parse()
+
+	if flagSqlFile == "" && !flagInteractive {
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
 }
 
 var quit chan os.Signal
