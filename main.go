@@ -2,8 +2,11 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
+	_ "github.com/go-sql-driver/mysql"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -15,7 +18,7 @@ var (
 	flagParallel    bool
 )
 
-func init() {
+func parseFlags() {
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
 	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行sql")
@@ -25,7 +28,7 @@ func init() {
 var quit chan os.Signal
 
 func main() {
-
+	parseFlags()
 	quit = make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Kill)
 
@@ -54,7 +57,11 @@ func main() {
 				fmt.Printf("> ")
 				line, err := scanner.ReadString('\n')
 				if err != nil {
-					panic(err)
+					if errors.Is(err, io.EOF) {
+						return
+					} else {
+						panic(err)
+					}
 				}
 				line = strings.TrimSpace(line)
 				if line == "" {

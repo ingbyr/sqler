@@ -38,8 +38,8 @@ func LoadConfig(dataSourceFile string) *Config {
 	}
 	ds := NewDataSource()
 	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "#") {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#") || line == "" {
 			continue
 		}
 		kv := strings.Split(line, "=")
