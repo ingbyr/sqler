@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"io"
 	"os"
 	"os/signal"
