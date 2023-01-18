@@ -61,8 +61,9 @@ func (s *Sqler) Exec(stopWhenError bool, stmts ...string) {
 
 func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
 	total := len(s.dbs) * len(stmts)
-	idx := 0
-	mu := &sync.Mutex{}
+	cntOk := 0
+	cntFailed := 0
+	cntMu := &sync.Mutex{}
 	wg := sync.WaitGroup{}
 	wg.Add(len(s.dbs))
 	for i, _db := range s.dbs {
@@ -74,39 +75,45 @@ func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
 				case <-quit:
 					return
 				default:
-					mu.Lock()
-					idx++
-					currId := idx
-					mu.Unlock()
-					prefix := fmt.Sprintf("[%d/%d](%s)", currId, total, dbUri)
+					prefix := fmt.Sprintf("(%s)", dbUri)
 					err := doExec(db, stmt, prefix, s.printer)
+					cntMu.Lock()
 					if err != nil {
+						cntFailed++
 						if stopWhenError {
 							quit <- os.Interrupt
-							panic(err)
-						} else {
-							fmt.Printf("%s %v\n", prefix, err)
+							os.Exit(1)
 						}
+					} else {
+						cntOk++
 					}
+					cntMu.Unlock()
 				}
 			}
 			wg.Done()
 		}(_db, _dbUri)
 	}
 	wg.Wait()
+	fmt.Printf("\n[Total %d of %d statements have been executed. Total %d has been failed]\n",
+		cntOk, total, cntFailed)
 }
 
 func doExec(db *sql.DB, stmt string, prefix string, printer *Printer) error {
 	rows, err := db.Query(stmt)
 	if err != nil {
+		renderMu.Lock()
+		printer.WriteString(fmt.Sprintf("\n%s exec> %s\n", prefix, stmt))
+		printer.WriteString(err.Error())
+		printer.WriteString("\n")
+		renderMu.Unlock()
 		return err
 	}
 	columns, _ := rows.Columns()
 	table := tablewriter.NewWriter(printer)
 	lines := toStringSlice(rows)
 	table.SetHeader(columns)
-	for i := range lines {
-		table.Append(lines[i])
+	for j := range lines {
+		table.Append(lines[j])
 	}
 	renderMu.Lock()
 	printer.WriteString(fmt.Sprintf("\n%s exec> %s\n", prefix, stmt))
