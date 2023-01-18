@@ -85,7 +85,7 @@ func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
 							quit <- os.Interrupt
 							panic(err)
 						} else {
-							fmt.Printf("%s error", prefix)
+							fmt.Printf("%s %v\n", prefix, err)
 						}
 					}
 				}
@@ -98,20 +98,20 @@ func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
 
 func doExec(db *sql.DB, stmt string, prefix string, printer *Printer) error {
 	rows, err := db.Query(stmt)
-	checkError("can not execute sql", err)
+	if err != nil {
+		return err
+	}
 	columns, _ := rows.Columns()
 	table := tablewriter.NewWriter(printer)
-	for rows.Next() {
-		lines := toStringSlice(rows)
-		table.SetHeader(columns)
-		for i := range lines {
-			table.Append(lines[i])
-		}
-		renderMu.Lock()
-		printer.WriteString(fmt.Sprintf("%s exec> %s\n", prefix, stmt))
-		table.Render()
-		renderMu.Unlock()
+	lines := toStringSlice(rows)
+	table.SetHeader(columns)
+	for i := range lines {
+		table.Append(lines[i])
 	}
+	renderMu.Lock()
+	printer.WriteString(fmt.Sprintf("\n%s exec> %s\n", prefix, stmt))
+	table.Render()
+	renderMu.Unlock()
 	return nil
 }
 
