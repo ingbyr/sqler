@@ -15,18 +15,23 @@ var renderMu = &sync.Mutex{}
 type Sqler struct {
 	ctx     context.Context
 	cfg     *Config
-	dbs     []*sql.DB
 	printer *Printer
+	dbSize  int
+	dbs     []*sql.DB
+	sjs     []chan *StmtJob
 }
 
 func NewSqler(cfg *Config) *Sqler {
 	s := &Sqler{
 		ctx:     context.Background(),
 		cfg:     cfg,
-		dbs:     make([]*sql.DB, 0),
 		printer: NewPrinter(),
+		dbSize:  len(cfg.DataSources),
+		dbs:     make([]*sql.DB, len(cfg.DataSources)),
+		sjs:     make([]chan *StmtJob, len(cfg.DataSources)),
 	}
-	for _, ds := range s.cfg.DataSources {
+	// Init db and stmt job chan
+	for i, ds := range s.cfg.DataSources {
 		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, cfg.DataSourceArg)
 		s.printer.WriteString(fmt.Sprintf("dsn: %s\n", dsn))
 		db, err := sql.Open("mysql", dsn)
@@ -34,7 +39,27 @@ func NewSqler(cfg *Config) *Sqler {
 		if err = db.Ping(); err != nil {
 			panic(err)
 		}
-		s.dbs = append(s.dbs, db)
+		s.dbs[i] = db
+		s.sjs[i] = make(chan *StmtJob)
+	}
+	// Listen stmt job chan
+	for _, sc := range s.sjs {
+		go func(stmtChan chan *StmtJob) {
+			for {
+				select {
+				case <-quit:
+					return
+				case sj := <-stmtChan:
+					err := doExec(sj.Db, sj.Stmt, sj.Prefix, s.printer)
+					if err != nil {
+						if sj.StopWhenError {
+							quit <- os.Interrupt
+						}
+					}
+					sj.Wg.Done()
+				}
+			}
+		}(sc)
 	}
 	return s
 }
@@ -45,16 +70,18 @@ func (s *Sqler) Exec(stopWhenError bool, stmts ...string) {
 	}
 	for dbIdx, db := range s.dbs {
 		ds := s.cfg.DataSources[dbIdx]
-		s.printer.WriteString(fmt.Sprintf("[%d/%d] %s/%s\n", dbIdx+1, len(s.dbs), ds.Url, ds.Schema))
 		for stmtIdx, stmt := range stmts {
-			err := doExec(db, stmt, fmt.Sprintf("  [%d/%d]", stmtIdx+1, len(stmts)), s.printer)
-			if err != nil {
-				if stopWhenError {
-					panic(err)
-				} else {
-					fmt.Printf("error: %v\n", err)
-				}
+			sj := &StmtJob{
+				Stmt: stmt,
+				Prefix: fmt.Sprintf("[%d/%d %d/%d] (%s/%s)",
+					dbIdx+1, s.dbSize, stmtIdx+1, len(stmts), ds.Url, ds.Schema),
+				StopWhenError: stopWhenError,
+				Db:            db,
+				Wg:            &sync.WaitGroup{},
 			}
+			sj.Wg.Add(1)
+			s.sjs[dbIdx] <- sj
+			sj.Wg.Wait()
 		}
 	}
 }
@@ -96,6 +123,15 @@ func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
 	wg.Wait()
 	fmt.Printf("\n[Total %d of %d statements have been executed. Total %d has been failed]\n",
 		cntOk, total, cntFailed)
+}
+
+func (s *Sqler) ExecInParallel0(stopWhenError bool, stmts ...string) {
+	//total := len(stmts)
+	//cntOk := 0
+	//cntFailed := 0
+	//cntMu := &sync.Mutex{}
+	//wg := sync.WaitGroup{}
+	//wg.Add(len(s.dbs))
 }
 
 func doExec(db *sql.DB, stmt string, prefix string, printer *Printer) error {
