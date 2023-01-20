@@ -64,7 +64,8 @@ func NewSqler(cfg *Config) *Sqler {
 	return s
 }
 
-func (s *Sqler) Exec(stopWhenError bool, stmts ...string) {
+// ExecSync executes sql in turn (each sql and database)
+func (s *Sqler) ExecSync(stopWhenError bool, stmts ...string) {
 	if stmts == nil || len(stmts) == 0 {
 		return
 	}
@@ -86,52 +87,45 @@ func (s *Sqler) Exec(stopWhenError bool, stmts ...string) {
 	}
 }
 
-func (s *Sqler) ExecInParallel(stopWhenError bool, stmts ...string) {
-	total := len(s.dbs) * len(stmts)
-	cntOk := 0
-	cntFailed := 0
-	cntMu := &sync.Mutex{}
-	wg := sync.WaitGroup{}
-	wg.Add(len(s.dbs))
-	for i, _db := range s.dbs {
-		ds := s.cfg.DataSources[i]
-		_dbUri := fmt.Sprintf("%s/%s", ds.Url, ds.Schema)
-		go func(db *sql.DB, dbUri string) {
-			for _, stmt := range stmts {
-				select {
-				case <-quit:
-					return
-				default:
-					prefix := fmt.Sprintf("(%s)", dbUri)
-					err := doExec(db, stmt, prefix, s.printer)
-					cntMu.Lock()
-					if err != nil {
-						cntFailed++
-						if stopWhenError {
-							quit <- os.Interrupt
-							os.Exit(1)
-						}
-					} else {
-						cntOk++
-					}
-					cntMu.Unlock()
-				}
+// ExecPara executes sql in parallel (each database)
+func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
+	for stmtIdx, stmt := range stmts {
+		wg := &sync.WaitGroup{}
+		wg.Add(s.dbSize)
+		for dbIdx, db := range s.dbs {
+			ds := s.cfg.DataSources[dbIdx]
+			sj := &StmtJob{
+				Stmt: stmt,
+				Prefix: fmt.Sprintf("[%d/%d %d/%d] (%s/%s)",
+					dbIdx+1, s.dbSize, stmtIdx+1, len(stmts), ds.Url, ds.Schema),
+				StopWhenError: stopWhenError,
+				Db:            db,
+				Wg:            wg,
 			}
-			wg.Done()
-		}(_db, _dbUri)
+			s.sjs[dbIdx] <- sj
+		}
+		wg.Wait()
 	}
-	wg.Wait()
-	fmt.Printf("\n[Total %d of %d statements have been executed. Total %d has been failed]\n",
-		cntOk, total, cntFailed)
 }
 
-func (s *Sqler) ExecInParallel0(stopWhenError bool, stmts ...string) {
-	//total := len(stmts)
-	//cntOk := 0
-	//cntFailed := 0
-	//cntMu := &sync.Mutex{}
-	//wg := sync.WaitGroup{}
-	//wg.Add(len(s.dbs))
+func (s *Sqler) ExecPara0(stopWhenError bool, stmts ...string) {
+	wg := &sync.WaitGroup{}
+	wg.Add(len(stmts) * s.dbSize)
+	for stmtIdx, stmt := range stmts {
+		for dbIdx, db := range s.dbs {
+			ds := s.cfg.DataSources[dbIdx]
+			sj := &StmtJob{
+				Stmt: stmt,
+				Prefix: fmt.Sprintf("[%d/%d %d/%d] (%s/%s)",
+					dbIdx+1, s.dbSize, stmtIdx+1, len(stmts), ds.Url, ds.Schema),
+				StopWhenError: stopWhenError,
+				Db:            db,
+				Wg:            wg,
+			}
+			s.sjs[dbIdx] <- sj
+		}
+	}
+	wg.Wait()
 }
 
 func doExec(db *sql.DB, stmt string, prefix string, printer *Printer) error {

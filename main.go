@@ -15,12 +15,14 @@ var (
 	flagSqlFile     string
 	flagInteractive bool
 	flagParallel    bool
+	flagParallel0   bool
 )
 
 func parseFlags() {
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
-	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行sql")
+	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行模式")
+	flag.BoolVar(&flagParallel0, "p0", false, "(parallel0) 完全并行执行模式")
 	flag.Parse()
 
 	if flagSqlFile == "" && !flagInteractive {
@@ -43,10 +45,12 @@ func main() {
 	}
 	if flagSqlFile != "" {
 		fmt.Printf("execute sql from file: %s\n", flagSqlFile)
-		if flagParallel {
-			sqler.ExecInParallel(true, LoadSqlFile(flagSqlFile)...)
+		if flagParallel0 {
+			sqler.ExecPara0(true, LoadSqlFile(flagSqlFile)...)
+		} else if flagParallel {
+			sqler.ExecPara(true, LoadSqlFile(flagSqlFile)...)
 		} else {
-			sqler.Exec(true, LoadSqlFile(flagSqlFile)...)
+			sqler.ExecSync(true, LoadSqlFile(flagSqlFile)...)
 		}
 	}
 
@@ -71,10 +75,12 @@ func main() {
 				if line == "" {
 					continue
 				}
-				if flagParallel {
-					sqler.ExecInParallel(false, line)
+				if flagParallel0 {
+					sqler.ExecPara0(false, line)
+				} else if flagParallel {
+					sqler.ExecPara(false, line)
 				} else {
-					sqler.Exec(false, line)
+					sqler.ExecSync(false, line)
 				}
 			}
 		}
