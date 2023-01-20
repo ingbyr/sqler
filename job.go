@@ -5,10 +5,12 @@ import (
 	"sync"
 )
 
-type StmtJob struct {
-	Stmt          string
-	Prefix        string
-	StopWhenError bool
-	Db            *sql.DB
-	Wg            *sync.WaitGroup
+type Job struct {
+	Stmt     string
+	Db       *sql.DB
+	Prefix   string
+	Executed *sync.WaitGroup
+	Printed  *sync.WaitGroup
+	Result   *sql.Rows
+	Err      error
 }

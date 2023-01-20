@@ -16,6 +16,8 @@ var (
 	flagInteractive bool
 	flagParallel    bool
 	flagParallel0   bool
+	quit            = initQuitChan()
+	jobCacheSize    = 32
 )
 
 func parseFlags() {
@@ -31,12 +33,14 @@ func parseFlags() {
 	}
 }
 
-var quit chan os.Signal
+func initQuitChan() chan os.Signal {
+	quitChan := make(chan os.Signal, 1)
+	signal.Notify(quitChan, os.Interrupt, os.Kill)
+	return quitChan
+}
 
 func main() {
 	parseFlags()
-	quit = make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, os.Kill)
 
 	cfg := LoadConfig("jdbc.properties")
 	sqler := NewSqler(cfg)
@@ -46,7 +50,7 @@ func main() {
 	if flagSqlFile != "" {
 		fmt.Printf("execute sql from file: %s\n", flagSqlFile)
 		if flagParallel0 {
-			sqler.ExecPara0(true, LoadSqlFile(flagSqlFile)...)
+			sqler.ExecPara0(LoadSqlFile(flagSqlFile)...)
 		} else if flagParallel {
 			sqler.ExecPara(true, LoadSqlFile(flagSqlFile)...)
 		} else {
@@ -76,7 +80,7 @@ func main() {
 					continue
 				}
 				if flagParallel0 {
-					sqler.ExecPara0(false, line)
+					sqler.ExecPara0(line)
 				} else if flagParallel {
 					sqler.ExecPara(false, line)
 				} else {
