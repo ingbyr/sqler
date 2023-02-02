@@ -69,7 +69,7 @@ func (p *Printer) CheckError(msg string, err error) {
 	if err != nil {
 		p.WriteString("\n======= ERROR ========\n")
 		p.WriteString(fmt.Sprintf("message: %s\n", msg))
-		p.WriteString(fmt.Sprintf("error: %v\n", err))
+		p.WriteString(fmt.Sprintf("error  : %v\n", err))
 		os.Exit(1)
 	}
 }
