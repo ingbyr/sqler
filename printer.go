@@ -9,7 +9,9 @@ import (
 
 func NewPrinter() *Printer {
 	outputFile, err := os.OpenFile("output.log", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, os.ModePerm)
-	checkError("can not open output.log", err)
+	if err != nil {
+		panic(err)
+	}
 	p := &Printer{
 		outputFile: outputFile,
 		jobs:       make(chan *Job, jobCacheSize),
@@ -47,7 +49,7 @@ func (p *Printer) Run() {
 			}
 			columns, _ := job.Result.Columns()
 			table := tablewriter.NewWriter(p)
-			lines := toStringSlice(job.Result)
+			lines := p.toStringSlice(job.Result)
 			table.SetHeader(columns)
 			for j := range lines {
 				table.Append(lines[j])
@@ -63,10 +65,19 @@ func (p *Printer) PrintJob(job *Job) {
 	p.jobs <- job
 }
 
-func toStringSlice(rows *sql.Rows) [][]string {
+func (p *Printer) CheckError(msg string, err error) {
+	if err != nil {
+		p.WriteString("\n======= ERROR ========\n")
+		p.WriteString(fmt.Sprintf("message: %s\n", msg))
+		p.WriteString(fmt.Sprintf("error: %v\n", err))
+		os.Exit(1)
+	}
+}
+
+func (p *Printer) toStringSlice(rows *sql.Rows) [][]string {
 	lines := make([][]string, 0)
 	columns, err := rows.Columns()
-	checkError("Error getting columns from table", err)
+	p.CheckError("Error getting columns from table", err)
 	values := make([]sql.RawBytes, len(columns))
 
 	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
@@ -79,7 +90,7 @@ func toStringSlice(rows *sql.Rows) [][]string {
 
 	for rows.Next() {
 		err = rows.Scan(scanArgs...)
-		checkError("Error scanning rows from table", err)
+		p.CheckError("Error scanning rows from table", err)
 		var value string
 		var line []string
 		for _, col := range values {
@@ -92,6 +103,6 @@ func toStringSlice(rows *sql.Rows) [][]string {
 		}
 		lines = append(lines, line)
 	}
-	checkError("Error scanning rows from table", rows.Err())
+	p.CheckError("Error scanning rows from table", rows.Err())
 	return lines
 }

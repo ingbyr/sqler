@@ -27,14 +27,14 @@ func NewSqler(cfg *Config) *Sqler {
 		sjs:     make([]chan *Job, len(cfg.DataSources)),
 	}
 	// Init db and stmt job chan
+	total := len(s.cfg.DataSources)
 	for i, ds := range s.cfg.DataSources {
 		dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, cfg.DataSourceArg)
-		s.printer.WriteString(fmt.Sprintf("dsn: %s\n", dsn))
+		s.printer.WriteString(fmt.Sprintf("[%d/%d] connecting %s", i+1, total, dsn))
 		db, err := sql.Open("mysql", dsn)
-		checkError("failed to connect to the db", err)
-		if err = db.Ping(); err != nil {
-			panic(err)
-		}
+		s.printer.CheckError("failed parse dsn", err)
+		s.printer.CheckError("failed to connect the db", db.Ping())
+		s.printer.WriteString(" [ok]\n")
 		s.dbs[i] = db
 		s.sjs[i] = make(chan *Job, jobCacheSize)
 	}
