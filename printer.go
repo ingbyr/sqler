@@ -41,12 +41,14 @@ func (p *Printer) Run() {
 		case job := <-p.jobs:
 			job.Executed.Wait()
 			p.WriteString(fmt.Sprintf("%s %s\n", job.Prefix, job.Stmt))
+
 			if job.Err != nil {
 				p.WriteString(job.Err.Error())
 				p.WriteString("\n\n")
 				job.Printed.Done()
 				continue
 			}
+
 			columns, _ := job.Result.Columns()
 			table := tablewriter.NewWriter(p)
 			lines := p.toStringSlice(job.Result)
@@ -67,11 +69,15 @@ func (p *Printer) PrintJob(job *Job) {
 
 func (p *Printer) CheckError(msg string, err error) {
 	if err != nil {
-		p.WriteString("\n======= ERROR ========\n")
-		p.WriteString(fmt.Sprintf("message: %s\n", msg))
-		p.WriteString(fmt.Sprintf("error  : %v\n", err))
+		p.PrintError(msg, err)
 		os.Exit(1)
 	}
+}
+
+func (p *Printer) PrintError(msg string, err error) {
+	p.WriteString("\n======= ERROR ========\n")
+	p.WriteString(fmt.Sprintf("message: %s\n", msg))
+	p.WriteString(fmt.Sprintf("error  : %v\n", err))
 }
 
 func (p *Printer) toStringSlice(rows *sql.Rows) [][]string {

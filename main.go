@@ -44,9 +44,7 @@ func main() {
 
 	cfg := LoadConfig("jdbc.properties")
 	sqler := NewSqler(cfg)
-	if sqler == nil {
-		panic("failed to create sqler")
-	}
+
 	if flagSqlFile != "" {
 		fmt.Printf("execute sql from file: %s\n", flagSqlFile)
 		if flagParallel0 {
