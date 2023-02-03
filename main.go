@@ -12,10 +12,16 @@ import (
 )
 
 var (
+	Version   string
+	BuildTime string
+)
+
+var (
 	flagSqlFile     string
 	flagInteractive bool
 	flagParallel    bool
 	flagParallel0   bool
+	flagVersion     bool
 	quit            = initQuitChan()
 	jobCacheSize    = 32
 )
@@ -25,12 +31,8 @@ func parseFlags() {
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
 	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行模式")
 	flag.BoolVar(&flagParallel0, "p0", false, "(parallel0) 完全并行执行模式")
+	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.Parse()
-
-	if flagSqlFile == "" && !flagInteractive {
-		flag.PrintDefaults()
-		os.Exit(0)
-	}
 }
 
 func initQuitChan() chan os.Signal {
@@ -41,6 +43,12 @@ func initQuitChan() chan os.Signal {
 
 func main() {
 	parseFlags()
+
+	if flagVersion {
+		fmt.Println("version:", Version)
+		fmt.Println("build:", BuildTime)
+		os.Exit(0)
+	}
 
 	cfg := LoadConfig("jdbc.properties")
 	sqler := NewSqler(cfg)
