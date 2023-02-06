@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 )
 
 var (
@@ -26,6 +27,12 @@ var (
 	jobCacheSize    = 32
 )
 
+var (
+	initSqlerOnce = &sync.Once{}
+	cfg           *Config
+	sqler         *Sqler
+)
+
 func parseFlags() {
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
@@ -41,19 +48,27 @@ func initQuitChan() chan os.Signal {
 	return quitChan
 }
 
+func initSqler() {
+	initSqlerOnce.Do(func() {
+		cfg = LoadConfig("jdbc.properties")
+		sqler = NewSqler(cfg)
+	})
+}
+
 func main() {
 	parseFlags()
+	doActions := false
 
 	if flagVersion {
+		doActions = true
 		fmt.Println("version:", Version)
 		fmt.Println("build:", BuildTime)
 		os.Exit(0)
 	}
 
-	cfg := LoadConfig("jdbc.properties")
-	sqler := NewSqler(cfg)
-
 	if flagSqlFile != "" {
+		doActions = true
+		initSqler()
 		fmt.Printf("execute sql from file: %s\n", flagSqlFile)
 		if flagParallel0 {
 			sqler.ExecPara0(LoadSqlFile(flagSqlFile)...)
@@ -65,6 +80,8 @@ func main() {
 	}
 
 	if flagInteractive {
+		doActions = true
+		initSqler()
 		fmt.Println("start mysql shell ...")
 		scanner := bufio.NewReader(os.Stdin)
 		for {
@@ -85,6 +102,9 @@ func main() {
 				if line == "" {
 					continue
 				}
+				if line == "/q" {
+					os.Exit(0)
+				}
 				if flagParallel0 {
 					sqler.ExecPara0(line)
 				} else if flagParallel {
@@ -96,4 +116,7 @@ func main() {
 		}
 	}
 
+	if !doActions {
+		flag.PrintDefaults()
+	}
 }

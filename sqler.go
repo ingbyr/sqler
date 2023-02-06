@@ -27,18 +27,8 @@ func NewSqler(cfg *Config) *Sqler {
 		dbs:     make([]*sql.DB, len(cfg.DataSources)),
 		sjs:     make([]chan *Job, len(cfg.DataSources)),
 	}
+
 	// Init db and stmt job chan
-	//total := len(s.cfg.DataSources)
-	//for i, ds := range s.cfg.DataSources {
-	//	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, cfg.DataSourceArg)
-	//	s.printer.WriteString(fmt.Sprintf("[%d/%d] connecting %s", i+1, total, dsn))
-	//	db, err := sql.Open("mysql", dsn)
-	//	s.printer.CheckError("failed parse dsn", err)
-	//	s.printer.CheckError("failed to connect the db", db.Ping())
-	//	s.printer.WriteString(" [ok]\n")
-	//	s.dbs[i] = db
-	//	s.sjs[i] = make(chan *Job, jobCacheSize)
-	//}
 	connCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	initWg := &sync.WaitGroup{}
 	initWg.Add(s.dbSize)
@@ -46,6 +36,7 @@ func NewSqler(cfg *Config) *Sqler {
 		s.initConn(connCtx, i, initWg)
 	}
 	initWg.Wait()
+
 	// Listen stmt job chan
 	for _, sc := range s.sjs {
 		go func(stmtJobs chan *Job) {
@@ -60,13 +51,14 @@ func NewSqler(cfg *Config) *Sqler {
 			}
 		}(sc)
 	}
+
 	return s
 }
 
 func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitGroup) {
 	ds := s.cfg.DataSources[dbIdx]
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArg)
-	s.printer.WriteString(fmt.Sprintf("[%d/%d] connecting %s", dbIdx, s.dbSize, dsn))
+	s.printer.WriteString(fmt.Sprintf("[%d/%d] connecting %s", dbIdx+1, s.dbSize, dsn))
 	db, err := sql.Open("mysql", dsn)
 	s.printer.CheckError("failed parse dsn", err)
 	s.printer.CheckError("failed to connect the db", db.PingContext(ctx))
