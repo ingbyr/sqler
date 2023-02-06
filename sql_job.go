@@ -32,6 +32,11 @@ func (job *SqlJob) Msg() []byte {
 		return b.Bytes()
 	}
 	// Convert to table format
+	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
+		// Some DDL return nothing
+		b.Write([]byte("OK"))
+		return b.Bytes()
+	}
 	table := tablewriter.NewWriter(b)
 	table.SetHeader(sqlColumns)
 	for j := range sqlResultLines {
