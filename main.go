@@ -62,8 +62,8 @@ func main() {
 
 	if flagVersion {
 		doActions = true
-		fmt.Println("version:", Version)
-		fmt.Println("build:", BuildTime)
+		fmt.Println("Version:", Version)
+		fmt.Println("Build Time:", BuildTime)
 		os.Exit(0)
 	}
 
@@ -83,7 +83,7 @@ func main() {
 	if flagInteractive {
 		doActions = true
 		initSqler()
-		fmt.Println("start mysql shell ...")
+		fmt.Println("Start mysql shell ...")
 		scanner := bufio.NewReader(os.Stdin)
 		for {
 			select {

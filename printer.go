@@ -74,6 +74,9 @@ func (p *Printer) doPrint() {
 			if job.PrintWg() != nil {
 				job.PrintWg().Done()
 			}
+			if job.ErrorQuit() && job.Level() == Error {
+				os.Exit(1)
+			}
 		}
 	}
 }

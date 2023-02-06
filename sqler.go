@@ -6,7 +6,6 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"sync"
-	"time"
 )
 
 const (
@@ -31,13 +30,16 @@ func NewSqler(cfg *Config) *Sqler {
 	}
 
 	// Init db and stmt job chan
-	connCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	initWg := &sync.WaitGroup{}
-	initWg.Add(s.dbSize)
+	printWg := &sync.WaitGroup{}
+	printWg.Add(s.dbSize)
 	for i := 0; i < s.dbSize; i++ {
-		s.initConn(connCtx, i, initWg)
+		connJob := NewConnJob(i, printWg)
+		go func() {
+			connJob.Exec(s)
+		}()
+		printer.Print(connJob)
 	}
-	initWg.Wait()
+	printWg.Wait()
 
 	// Listen stmt job chan
 	for _, sc := range s.sqlJobs {

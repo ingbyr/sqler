@@ -1,6 +1,8 @@
 package main
 
-import "sync"
+import (
+	"sync"
+)
 
 type PrintJob interface {
 	Msg() []byte
@@ -8,8 +10,10 @@ type PrintJob interface {
 	Printed() *sync.WaitGroup
 	PrintWg() *sync.WaitGroup
 	WaitForPrint()
+	ErrorQuit() bool
 }
 
+var _ PrintJob = (*DefaultPrintJob)(nil)
 var _ PrintJob = (*StrPrintJob)(nil)
 
 type DefaultPrintJob struct {
@@ -30,6 +34,10 @@ func NewDefaultPrintJob(level Level, printable *sync.WaitGroup, printWg *sync.Wa
 	}
 }
 
+func (p *DefaultPrintJob) Msg() []byte {
+	panic("implement me")
+}
+
 func (p *DefaultPrintJob) PrintWg() *sync.WaitGroup {
 	return p.printWg
 }
@@ -48,18 +56,6 @@ func (p *DefaultPrintJob) Printed() *sync.WaitGroup {
 	return p.printed
 }
 
-type StrPrintJob struct {
-	msg string
-	*DefaultPrintJob
-}
-
-func NewStrPrintJob(msg string, level Level, printable *sync.WaitGroup, printWg *sync.WaitGroup) *StrPrintJob {
-	return &StrPrintJob{
-		msg:             msg,
-		DefaultPrintJob: NewDefaultPrintJob(level, printable, printWg),
-	}
-}
-
-func (p *StrPrintJob) Msg() []byte {
-	return []byte(p.msg)
+func (p *DefaultPrintJob) ErrorQuit() bool {
+	return false
 }
