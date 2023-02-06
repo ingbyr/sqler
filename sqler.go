@@ -16,7 +16,6 @@ const (
 type Sqler struct {
 	ctx     context.Context
 	cfg     *Config
-	printer *Printer
 	dbSize  int
 	dbs     []*sql.DB
 	sqlJobs []chan *SqlJob
@@ -26,7 +25,6 @@ func NewSqler(cfg *Config) *Sqler {
 	s := &Sqler{
 		ctx:     context.Background(),
 		cfg:     cfg,
-		printer: NewPrinter(),
 		dbSize:  len(cfg.DataSources),
 		dbs:     make([]*sql.DB, len(cfg.DataSources)),
 		sqlJobs: make([]chan *SqlJob, len(cfg.DataSources)),
@@ -62,11 +60,14 @@ func NewSqler(cfg *Config) *Sqler {
 func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitGroup) {
 	ds := s.cfg.DataSources[dbIdx]
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArg)
-	s.printer.WriteString(fmt.Sprintf("[%d/%d] connecting %s", dbIdx+1, s.dbSize, dsn))
 	db, err := sql.Open("mysql", dsn)
-	s.printer.CheckError("failed parse dsn", err)
-	s.printer.CheckError("failed to connect the db", db.PingContext(ctx))
-	s.printer.WriteString(" [ok]\n")
+	if err != nil {
+		printer.PrintError("failed to parse dsn", err)
+	}
+	if err = db.PingContext(ctx); err != nil {
+		printer.PrintError("failed to connect db", err)
+	}
+	printer.PrintInfo(fmt.Sprintf("[%d/%d] connected %s", dbIdx+1, s.dbSize, dsn))
 	s.dbs[dbIdx] = db
 	s.sqlJobs[dbIdx] = make(chan *SqlJob, SqlJobCacheSize)
 	initialized.Done()
@@ -141,11 +142,11 @@ func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg
 		ExecWg:          execWg,
 		Db:              s.dbs[dbId],
 		Prefix:          prefix,
-		DefaultPrintJob: NewDefaultPrintJob(MsgInfo, execWg, printWg),
+		DefaultPrintJob: NewDefaultPrintJob(Info, execWg, printWg),
 	}
 	s.sqlJobs[dbId] <- job
 	// Send print job
-	s.printer.Print(job)
+	printer.Print(job)
 	return job
 }
 

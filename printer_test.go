@@ -13,20 +13,20 @@ func TestPrinter_PrintJob(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		pwg.Add(1)
-		p.Print(NewStrPrintJob(fmt.Sprintf("%d\n", i), MsgDebug, nil, pwg))
+		p.Print(NewStrPrintJob(fmt.Sprintf("%d\n", i), Debug, nil, pwg))
 	}
 
 	pwg.Add(1)
 	go func() {
 		printable := &sync.WaitGroup{}
 		printable.Add(1)
-		p.Print(NewStrPrintJob("5\n", MsgDebug, printable, pwg))
+		p.Print(NewStrPrintJob("5\n", Debug, printable, pwg))
 		time.Sleep(1 * time.Second)
 		printable.Done()
 	}()
 
 	pwg.Add(1)
-	p.Print(NewStrPrintJob("4\n", MsgDebug, nil, pwg))
+	p.Print(NewStrPrintJob("4\n", Debug, nil, pwg))
 
 	pwg.Wait()
 }

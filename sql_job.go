@@ -26,7 +26,7 @@ func (job *SqlJob) Msg() []byte {
 	b.WriteString(job.Prefix)
 	sqlColumns, sqlResultLines := job.convertSqlResults()
 	if job.Err != nil {
-		job.level = MsgError
+		job.level = Error
 		b.WriteString(job.Err.Error())
 		b.WriteByte('\n')
 		return b.Bytes()

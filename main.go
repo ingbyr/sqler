@@ -30,6 +30,7 @@ var (
 	initSqlerOnce = &sync.Once{}
 	cfg           *Config
 	sqler         *Sqler
+	printer       *Printer
 )
 
 func parseFlags() {
@@ -49,6 +50,7 @@ func initQuitChan() chan os.Signal {
 
 func initSqler() {
 	initSqlerOnce.Do(func() {
+		printer = NewPrinter()
 		cfg = LoadConfig("jdbc.properties")
 		sqler = NewSqler(cfg)
 	})
@@ -68,7 +70,7 @@ func main() {
 	if flagSqlFile != "" {
 		doActions = true
 		initSqler()
-		fmt.Printf("execute sql from file: %s\n", flagSqlFile)
+		printer.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		if flagParallel0 {
 			sqler.ExecPara0(LoadSqlFile(flagSqlFile)...)
 		} else if flagParallel {
@@ -101,7 +103,7 @@ func main() {
 				if line == "" {
 					continue
 				}
-				if line == "/q" {
+				if line == ":q" {
 					os.Exit(0)
 				}
 				if flagParallel0 {
