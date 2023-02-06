@@ -19,7 +19,7 @@ type Sqler struct {
 	printer *Printer
 	dbSize  int
 	dbs     []*sql.DB
-	sjs     []chan *Job
+	sqlJobs []chan *SqlJob
 }
 
 func NewSqler(cfg *Config) *Sqler {
@@ -29,7 +29,7 @@ func NewSqler(cfg *Config) *Sqler {
 		printer: NewPrinter(),
 		dbSize:  len(cfg.DataSources),
 		dbs:     make([]*sql.DB, len(cfg.DataSources)),
-		sjs:     make([]chan *Job, len(cfg.DataSources)),
+		sqlJobs: make([]chan *SqlJob, len(cfg.DataSources)),
 	}
 
 	// Init db and stmt job chan
@@ -42,15 +42,15 @@ func NewSqler(cfg *Config) *Sqler {
 	initWg.Wait()
 
 	// Listen stmt job chan
-	for _, sc := range s.sjs {
-		go func(stmtJobs chan *Job) {
+	for _, sc := range s.sqlJobs {
+		go func(stmtJobs chan *SqlJob) {
 			for {
 				select {
 				case <-quit:
 					return
 				case job := <-stmtJobs:
-					job.Result, job.Err = job.Db.Query(job.Stmt)
-					job.Executed.Done()
+					job.SqlRows, job.Err = job.Db.Query(job.Stmt)
+					job.printable.Done()
 				}
 			}
 		}(sc)
@@ -68,7 +68,7 @@ func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitG
 	s.printer.CheckError("failed to connect the db", db.PingContext(ctx))
 	s.printer.WriteString(" [ok]\n")
 	s.dbs[dbIdx] = db
-	s.sjs[dbIdx] = make(chan *Job, SqlJobCacheSize)
+	s.sqlJobs[dbIdx] = make(chan *SqlJob, SqlJobCacheSize)
 	initialized.Done()
 }
 
@@ -76,13 +76,12 @@ func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitG
 func (s *Sqler) ExecSync(stopWhenError bool, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 1
-	printedWg := &sync.WaitGroup{}
-	printedWg.Add(1)
+	printWg := &sync.WaitGroup{}
 	for _, stmt := range stmts {
-		jobs := make([]*Job, s.dbSize)
+		jobs := make([]*SqlJob, s.dbSize)
 		for dbId := range s.dbs {
-			printedWg.Add(1)
-			job := s.SendJob(stmt, dbId, jobId, jobSize, printedWg)
+			printWg.Add(1)
+			job := s.Exec(stmt, dbId, jobId, jobSize, printWg)
 			jobs[dbId] = job
 			jobId++
 			s.waitForExecuted(job)
@@ -91,21 +90,19 @@ func (s *Sqler) ExecSync(stopWhenError bool, stmts ...string) {
 			break
 		}
 	}
-	printedWg.Done()
-	printedWg.Wait()
+	printWg.Wait()
 }
 
 // ExecPara executes sql in parallel (each database)
 func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 1
-	printedWg := &sync.WaitGroup{}
-	printedWg.Add(1)
+	printWg := &sync.WaitGroup{}
 	for _, stmt := range stmts {
-		jobs := make([]*Job, s.dbSize)
+		jobs := make([]*SqlJob, s.dbSize)
 		for dbId := range s.dbs {
-			printedWg.Add(1)
-			jobs[dbId] = s.SendJob(stmt, dbId, jobId, jobSize, printedWg)
+			printWg.Add(1)
+			jobs[dbId] = s.Exec(stmt, dbId, jobId, jobSize, printWg)
 			jobId++
 		}
 		s.waitForExecuted(jobs...)
@@ -113,48 +110,46 @@ func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
 			break
 		}
 	}
-	printedWg.Done()
-	printedWg.Wait()
+	printWg.Wait()
 }
 
 func (s *Sqler) ExecPara0(stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 1
-	printedWg := &sync.WaitGroup{}
-	printedWg.Add(1)
+	printWg := &sync.WaitGroup{}
 	for _, stmt := range stmts {
-		jobs := make([]*Job, s.dbSize)
+		jobs := make([]*SqlJob, s.dbSize)
 		for dbId := range s.dbs {
-			printedWg.Add(1)
-			jobs[dbId] = s.SendJob(stmt, dbId, jobId, jobSize, printedWg)
+			printWg.Add(1)
+			jobs[dbId] = s.Exec(stmt, dbId, jobId, jobSize, printWg)
 			jobId++
 		}
 	}
-	printedWg.Done()
-	printedWg.Wait()
+	printWg.Wait()
 }
 func (s *Sqler) totalStmtSize(stmtSize int) int {
 	return s.dbSize * stmtSize
 }
 
-func (s *Sqler) SendJob(stmt string, dbId int, jobId int, totalJobSize int, printedWg *sync.WaitGroup) *Job {
+func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg *sync.WaitGroup) *SqlJob {
 	ds := s.cfg.DataSources[dbId]
-	prefix := fmt.Sprintf("[%d/%d] (%s/%s) >", jobId, totalJobSize, ds.Url, ds.Schema)
-	executed := &sync.WaitGroup{}
-	executed.Add(1)
-	job := &Job{
-		Stmt:     stmt,
-		Db:       s.dbs[dbId],
-		Prefix:   prefix,
-		Executed: executed,
-		Printed:  printedWg,
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.Url, ds.Schema, stmt)
+	execWg := &sync.WaitGroup{}
+	execWg.Add(1)
+	job := &SqlJob{
+		Stmt:            stmt,
+		ExecWg:          execWg,
+		Db:              s.dbs[dbId],
+		Prefix:          prefix,
+		DefaultPrintJob: NewDefaultPrintJob(MsgInfo, execWg, printWg),
 	}
-	s.sjs[dbId] <- job
-	s.printer.PrintJob(job)
+	s.sqlJobs[dbId] <- job
+	// Send print job
+	s.printer.Print(job)
 	return job
 }
 
-func (s *Sqler) shouldStop(jobs []*Job) bool {
+func (s *Sqler) shouldStop(jobs []*SqlJob) bool {
 	for _, job := range jobs {
 		if job.Err != nil {
 			return true
@@ -163,8 +158,8 @@ func (s *Sqler) shouldStop(jobs []*Job) bool {
 	return false
 }
 
-func (s *Sqler) waitForExecuted(jobs ...*Job) {
+func (s *Sqler) waitForExecuted(jobs ...*SqlJob) {
 	for _, job := range jobs {
-		job.Executed.Wait()
+		job.ExecWg.Wait()
 	}
 }

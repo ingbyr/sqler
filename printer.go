@@ -1,16 +1,16 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
+	"time"
 )
 
 type MsgLevel = uint
 
 const (
-	JobCacheSize = 32
-	MsgDebug     = iota
+	PrintJobCacheSize = 32
+	MsgDebug          = iota
 	MsgInfo
 	MsgWarn
 	MsgError
@@ -28,7 +28,7 @@ func NewPrinter() *Printer {
 	}
 	p := &Printer{
 		outputFile: outputFile,
-		jobs:       make(chan PrintJob, JobCacheSize),
+		jobs:       make(chan PrintJob, PrintJobCacheSize),
 	}
 	go p.doPrint()
 	return p
@@ -44,34 +44,6 @@ func (p *Printer) Write(b []byte) (n int, err error) {
 	return p.outputFile.Write(b)
 }
 
-//func (p *Printer) Run() {
-//	for {
-//		select {
-//		case job := <-p._jobs:
-//			job.Executed.Wait()
-//			p.WriteString(fmt.Sprintf("%s %s\n", job.Prefix, job.Stmt))
-//
-//			if job.Err != nil {
-//				p.WriteString(job.Err.Error())
-//				p.WriteString("\n\n")
-//				job.Printed.Done()
-//				continue
-//			}
-//
-//			columns, _ := job.Result.Columns()
-//			table := tablewriter.NewWriter(p)
-//			lines := p.toStringSlice(job.Result)
-//			table.SetHeader(columns)
-//			for j := range lines {
-//				table.Append(lines[j])
-//			}
-//			table.Render()
-//			p.WriteString("\n")
-//			job.Printed.Done()
-//		}
-//	}
-//}
-
 func (p *Printer) doPrint() {
 	for {
 		select {
@@ -79,6 +51,19 @@ func (p *Printer) doPrint() {
 			job.WaitForPrint()
 			p.Write(job.Msg())
 			job.Printed().Done()
+			if job.PrintWg() != nil {
+				job.PrintWg().Done()
+			}
+		}
+	}
+}
+
+func (p *Printer) WaitForPrinted() {
+	for {
+		if len(p.jobs) > 0 {
+			time.Sleep(100 * time.Millisecond)
+		} else {
+			return
 		}
 	}
 }
@@ -98,41 +83,4 @@ func (p *Printer) PrintError(msg string, err error) {
 	p.WriteString("\n======= ERROR ========\n")
 	p.WriteString(fmt.Sprintf("message: %s\n", msg))
 	p.WriteString(fmt.Sprintf("error  : %v\n", err))
-}
-
-func (p *Printer) toStringSlice(rows *sql.Rows) [][]string {
-	lines := make([][]string, 0)
-	columns, err := rows.Columns()
-	p.CheckError("Error getting columns from table", err)
-	values := make([]sql.RawBytes, len(columns))
-
-	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
-	// references into such a slice
-	// See http://code.google.com/p/go-wiki/wiki/InterfaceSlice for details
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-
-	for rows.Next() {
-		err = rows.Scan(scanArgs...)
-		p.CheckError("Error scanning rows from table", err)
-		var value string
-		var line []string
-		for _, col := range values {
-			if col == nil {
-				value = "NULL"
-			} else {
-				value = string(col)
-			}
-			line = append(line, value)
-		}
-		lines = append(lines, line)
-	}
-	p.CheckError("Error scanning rows from table", rows.Err())
-	return lines
-}
-
-func (p *Printer) PrintJob(job *Job) {
-
 }
