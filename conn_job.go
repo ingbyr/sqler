@@ -42,16 +42,16 @@ func (job *ConnJob) Exec(s *Sqler) {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArg)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		job.Result.WriteString(fmt.Sprintf("failed to parse dsn: %v", err))
+		job.Result.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))
 		job.level = Error
 		return
 	}
 	if err = db.PingContext(s.ctx); err != nil {
-		job.Result.WriteString(fmt.Sprintf("failed to connect db: %v", err))
+		job.Result.WriteString(fmt.Sprintf("Failed to connect db, %v", err))
 		job.level = Error
 		return
 	}
-	job.Result.WriteString(fmt.Sprintf("[%d/%d] connected %s", job.Idx+1, s.dbSize, dsn))
+	job.Result.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, s.dbSize, dsn))
 	s.dbs[job.Idx] = db
 	s.sqlJobs[job.Idx] = make(chan *SqlJob, SqlJobCacheSize)
 	return
