@@ -3,9 +3,23 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
 	"os"
 )
+
+type MsgLevel = uint
+
+const (
+	JobCacheSize = 32
+	MsgDebug     = iota
+	MsgInfo
+	MsgWarn
+	MsgError
+)
+
+type Printer struct {
+	outputFile *os.File
+	jobs       chan PrintJob
+}
 
 func NewPrinter() *Printer {
 	outputFile, err := os.OpenFile("output.log", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, os.ModePerm)
@@ -14,15 +28,10 @@ func NewPrinter() *Printer {
 	}
 	p := &Printer{
 		outputFile: outputFile,
-		jobs:       make(chan *Job, jobCacheSize),
+		jobs:       make(chan PrintJob, JobCacheSize),
 	}
-	go p.Run()
+	go p.doPrint()
 	return p
-}
-
-type Printer struct {
-	outputFile *os.File
-	jobs       chan *Job
 }
 
 func (p *Printer) WriteString(s string) (n int, err error) {
@@ -35,35 +44,46 @@ func (p *Printer) Write(b []byte) (n int, err error) {
 	return p.outputFile.Write(b)
 }
 
-func (p *Printer) Run() {
+//func (p *Printer) Run() {
+//	for {
+//		select {
+//		case job := <-p._jobs:
+//			job.Executed.Wait()
+//			p.WriteString(fmt.Sprintf("%s %s\n", job.Prefix, job.Stmt))
+//
+//			if job.Err != nil {
+//				p.WriteString(job.Err.Error())
+//				p.WriteString("\n\n")
+//				job.Printed.Done()
+//				continue
+//			}
+//
+//			columns, _ := job.Result.Columns()
+//			table := tablewriter.NewWriter(p)
+//			lines := p.toStringSlice(job.Result)
+//			table.SetHeader(columns)
+//			for j := range lines {
+//				table.Append(lines[j])
+//			}
+//			table.Render()
+//			p.WriteString("\n")
+//			job.Printed.Done()
+//		}
+//	}
+//}
+
+func (p *Printer) doPrint() {
 	for {
 		select {
 		case job := <-p.jobs:
-			job.Executed.Wait()
-			p.WriteString(fmt.Sprintf("%s %s\n", job.Prefix, job.Stmt))
-
-			if job.Err != nil {
-				p.WriteString(job.Err.Error())
-				p.WriteString("\n\n")
-				job.Printed.Done()
-				continue
-			}
-
-			columns, _ := job.Result.Columns()
-			table := tablewriter.NewWriter(p)
-			lines := p.toStringSlice(job.Result)
-			table.SetHeader(columns)
-			for j := range lines {
-				table.Append(lines[j])
-			}
-			table.Render()
-			p.WriteString("\n")
-			job.Printed.Done()
+			job.WaitForPrint()
+			p.Write(job.Msg())
+			job.Printed().Done()
 		}
 	}
 }
 
-func (p *Printer) PrintJob(job *Job) {
+func (p *Printer) Print(job PrintJob) {
 	p.jobs <- job
 }
 
@@ -111,4 +131,8 @@ func (p *Printer) toStringSlice(rows *sql.Rows) [][]string {
 	}
 	p.CheckError("Error scanning rows from table", rows.Err())
 	return lines
+}
+
+func (p *Printer) PrintJob(job *Job) {
+
 }

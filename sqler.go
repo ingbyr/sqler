@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+const (
+	SqlJobCacheSize = 16
+)
+
 type Sqler struct {
 	ctx     context.Context
 	cfg     *Config
@@ -64,7 +68,7 @@ func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitG
 	s.printer.CheckError("failed to connect the db", db.PingContext(ctx))
 	s.printer.WriteString(" [ok]\n")
 	s.dbs[dbIdx] = db
-	s.sjs[dbIdx] = make(chan *Job, jobCacheSize)
+	s.sjs[dbIdx] = make(chan *Job, SqlJobCacheSize)
 	initialized.Done()
 }
 

@@ -24,7 +24,6 @@ var (
 	flagParallel0   bool
 	flagVersion     bool
 	quit            = initQuitChan()
-	jobCacheSize    = 32
 )
 
 var (
