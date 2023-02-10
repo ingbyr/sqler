@@ -11,8 +11,7 @@ sqler-release:
     - make build-win
     - make build-linux
     - ls "${CI_PROJECT_DIR}/bin"
-    - release-cli create
-      --server-url "https://git.ccccltd.cn"
+    - release-cli --server-url https://git.ccccltd.cn create
       --name "Release $CI_COMMIT_SHA"
       --tag-name "$CI_COMMIT_SHORT_SHA"
       --ref "$CI_COMMIT_SHA"
