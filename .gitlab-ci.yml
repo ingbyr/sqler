@@ -7,7 +7,7 @@ sqler-build:
   tags:
     - tmp
   only:
-    - main
+    - dev
   script:
     - make build-win
     - make build-linux
@@ -15,7 +15,7 @@ sqler-build:
 sqler-release:
   stage: release
   only:
-    - main
+    - dev
   release:
     tag_name: '$TAG'
     ref: '$CI_COMMIT_SHA'
