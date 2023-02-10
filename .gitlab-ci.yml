@@ -6,7 +6,7 @@ sqler-release:
   tags:
     - tmp
   only:
-    - dev
+    - master
   script:
     - make build-win
     - make build-linux
