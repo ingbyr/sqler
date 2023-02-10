@@ -11,7 +11,9 @@ sqler-release:
     - make build-win
     - make build-linux
     - ls "${CI_PROJECT_DIR}/bin"
-    - |
-      release-cli create --name "Release $CI_COMMIT_SHA" --tag-name "$CI_COMMIT_SHORT_SHA" --ref "$CI_COMMIT_SHA" \
-      --assets-link "{\"name\":\"sqler-win\", \"filepath\":\"${CI_PROJECT_DIR}/bin/sqler.exe\", \"url\":\"https://example.com/assets/1\",\"link_type\":\"other\"}" \
-      --assets-link "{\"name\":\"sqler-linux\", \"filepath\":\"${CI_PROJECT_DIR}/bin/sqler\", \"url\":\"https://example.com/assets/2\",\"link_type\":\"other\"}"
+    - release-cli create
+      --name "Release $CI_COMMIT_SHA"
+      --tag-name "$CI_COMMIT_SHORT_SHA"
+      --ref "$CI_COMMIT_SHA"
+      --assets-link "{\"name\":\"sqler-win\",\"filepath\":\"${CI_PROJECT_DIR}/bin/sqler.exe\",\"url\":\"https://example.com/assets/1\",\"link_type\":\"other\"}"
+      --assets-link "{\"name\":\"sqler-linux\",\"filepath\":\"${CI_PROJECT_DIR}/bin/sqler\",\"url\":\"https://example.com/assets/2\",\"link_type\":\"other\"}"
