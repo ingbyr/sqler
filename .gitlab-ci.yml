@@ -16,12 +16,8 @@ sqler-release:
   stage: release
   only:
     - dev
-  release:
-    tag_name: '$TAG'
-    ref: '$CI_COMMIT_SHA'
-    assets:
-      links:
-        - name: 'sqler.exe'
-          filepath: 'bin/sqler.exe'
-        - name: 'sqler'
-          filepath: 'bin/sqler'
+  script:
+    - release-cli create --name "Release $CI_COMMIT_SHA" --description \
+      "Created using the release-cli $EXTRA_DESCRIPTION" \
+      --tag-name "v${CI_COMMIT_SHORT_SHA}" --ref "$CI_COMMIT_SHA" \
+      --assets-link "{\"name\":\"asset1\", \"filepath\":\"${CI_PROJECT_DIR}/bin/sqler.exe\", \"url\":\"https://example.com/assets/1\",\"link_type\":\"other\"}
