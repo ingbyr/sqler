@@ -10,8 +10,8 @@ sqler-release:
   script:
     - make build-win
     - make build-linux
-    - ls "${CI_PROJECT_DIR}/bin"
-    - release-cli --server-url https://git.ccccltd.cn create
+    - echo "$CI_PROJECT_ID"
+    - release-cli --server-url https://git.ccccltd.cn --job-token "$CI_JOB_TOKEN" --project-id "$CI_PROJECT_ID" create
       --name "Release $CI_COMMIT_SHA"
       --tag-name "$CI_COMMIT_SHORT_SHA"
       --ref "$CI_COMMIT_SHA"
