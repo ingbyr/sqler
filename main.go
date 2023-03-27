@@ -122,9 +122,9 @@ func execSql(stopWhenError bool, sqlStmt ...string) {
 	if flagParallel0 {
 		sqler.ExecPara0(sqlStmt...)
 	} else if flagParallel {
-		sqler.ExecPara(false, sqlStmt...)
+		sqler.ExecPara(stopWhenError, sqlStmt...)
 	} else {
-		sqler.ExecSync(false, sqlStmt...)
+		sqler.ExecSync(stopWhenError, sqlStmt...)
 	}
 }
 
