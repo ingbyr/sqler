@@ -49,7 +49,7 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta, commands [][]string,
 	}
 
 	// Same dir sql files
-	sqlFileNames := sqlFileNamesInDir(".")
+	sqlFileNames := sqlFileNamesInCurrentDir()
 	for _, sqlFileName := range sqlFileNames {
 		promptSuggest = append(promptSuggest, prompt.Suggest{
 			Text:        sqlFileName,
@@ -58,7 +58,7 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta, commands [][]string,
 	}
 }
 
-func sqlFileNamesInDir(dir string) []string {
+func sqlFileNamesInCurrentDir() []string {
 	matches, err := filepath.Glob("*.sql")
 	if err != nil {
 		return nil
