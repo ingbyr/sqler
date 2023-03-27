@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"strings"
 	"sync"
 )
 
@@ -129,6 +130,7 @@ func (s *Sqler) ExecPara0(stmts ...string) {
 	}
 	printWg.Wait()
 }
+
 func (s *Sqler) totalStmtSize(stmtSize int) int {
 	return s.dbSize * stmtSize
 }
@@ -138,17 +140,26 @@ func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg
 	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.Url, ds.Schema, stmt)
 	execWg := &sync.WaitGroup{}
 	execWg.Add(1)
+	stmt, useVerticalResult := s.checkStmtOptions(stmt)
 	job := &SqlJob{
-		Stmt:            stmt,
-		ExecWg:          execWg,
-		Db:              s.dbs[dbId],
-		Prefix:          prefix,
-		DefaultPrintJob: NewDefaultPrintJob(Info, execWg, printWg),
+		Stmt:              stmt,
+		ExecWg:            execWg,
+		Db:                s.dbs[dbId],
+		Prefix:            prefix,
+		UseVerticalResult: useVerticalResult,
+		DefaultPrintJob:   NewDefaultPrintJob(Info, execWg, printWg),
 	}
 	s.sqlJobs[dbId] <- job
 	// Send print job
 	printer.Print(job)
 	return job
+}
+
+func (s *Sqler) checkStmtOptions(stmt string) (string, bool) {
+	if strings.HasSuffix(stmt, `\G`) {
+		return stmt[:len(stmt)-2], true
+	}
+	return stmt, false
 }
 
 func (s *Sqler) shouldStop(jobs []*SqlJob) bool {
