@@ -168,7 +168,17 @@ func (s *Sqler) waitForExecuted(jobs ...*SqlJob) {
 
 func (s *Sqler) loadSchema() error {
 	db0 := s.dbs[0]
-	rows, err := db0.Query("select TABLE_NAME, TABLE_COMMENT from information_schema.TABLES")
+	schema := s.cfg.DataSources[0].Schema
+
+	tx, err := db0.Begin()
+	if err != nil {
+		return err
+	}
+	qtm, err := tx.Prepare(stmtQueryTableMetas)
+	if err != nil {
+		return err
+	}
+	rows, err := qtm.Query(schema)
 	if err != nil {
 		return err
 	}
@@ -179,8 +189,17 @@ func (s *Sqler) loadSchema() error {
 		}
 		s.tableMetas = append(s.tableMetas, tm)
 	}
+	defer qtm.Close()
 
-	rows, err = db0.Query("select COLUMN_NAME, COLUMN_COMMENT, COLUMN_TYPE from information_schema.COLUMNS")
+	tx, err = db0.Begin()
+	if err != nil {
+		return err
+	}
+	qcm, err := tx.Prepare(stmtQueryColumnMetas)
+	if err != nil {
+		return err
+	}
+	rows, err = qcm.Query(schema)
 	if err != nil {
 		return err
 	}
@@ -191,5 +210,7 @@ func (s *Sqler) loadSchema() error {
 		}
 		s.columnMeats = append(s.columnMeats, cm)
 	}
+	defer qcm.Close()
+
 	return nil
 }
