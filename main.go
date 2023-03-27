@@ -53,11 +53,17 @@ func initSqler() {
 		if err := sqler.loadSchema(); err != nil {
 			panic(err)
 		}
-		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+		initPromptSuggest(
+			sqler.tableMetas,
+			sqler.columnMeats,
+			[][]string{{"/q", "Quit"}, {"/source", "Source sql files"}},
+			[]string{"SELECT", "select", "UPDATE", "update", "INSERT INTO", "insert into", "WHERE", "where",
+				"FROM", "from", "GROUP BY", "group by", "HAVING", "having", "LIMIT", "limit"},
+		)
 	})
 }
 
-func main() {
+func cli() {
 	parseFlags()
 	doActions := false
 
@@ -72,44 +78,56 @@ func main() {
 		doActions = true
 		initSqler()
 		printer.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
-		if flagParallel0 {
-			sqler.ExecPara0(LoadSqlFile(flagSqlFile)...)
-		} else if flagParallel {
-			sqler.ExecPara(true, LoadSqlFile(flagSqlFile)...)
-		} else {
-			sqler.ExecSync(true, LoadSqlFile(flagSqlFile)...)
-		}
+		execSql(true, LoadSqlFile(flagSqlFile)...)
 	}
 
 	if flagInteractive {
 		doActions = true
 		initSqler()
-		fmt.Println("Start mysql shell ...")
-		for {
-			select {
-			case <-quit:
-				os.Exit(0)
-			default:
-				line := prompt.Input("> ", completer)
-				line = strings.TrimSpace(line)
-				if line == "" {
-					continue
-				}
-				if line == ":q" {
-					os.Exit(0)
-				}
-				if flagParallel0 {
-					sqler.ExecPara0(line)
-				} else if flagParallel {
-					sqler.ExecPara(false, line)
-				} else {
-					sqler.ExecSync(false, line)
-				}
-			}
-		}
+		p := prompt.New(
+			executor,
+			completer,
+			prompt.OptionPrefix("> "),
+			prompt.OptionTitle("sqler"))
+		p.Run()
 	}
 
 	if !doActions {
 		flag.PrintDefaults()
 	}
+}
+
+func executor(line string) {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return
+	}
+
+	if line == "/q" {
+		os.Exit(0)
+	}
+
+	if strings.HasPrefix(line, "/source") {
+		files := strings.Split(line, " ")[1:]
+		for _, file := range files {
+			execSql(false, LoadSqlFile(file)...)
+		}
+		return
+	}
+
+	execSql(false, line)
+}
+
+func execSql(stopWhenError bool, sqlStmt ...string) {
+	if flagParallel0 {
+		sqler.ExecPara0(sqlStmt...)
+	} else if flagParallel {
+		sqler.ExecPara(false, sqlStmt...)
+	} else {
+		sqler.ExecSync(false, sqlStmt...)
+	}
+}
+
+func main() {
+	cli()
 }
