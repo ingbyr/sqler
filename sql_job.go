@@ -52,10 +52,21 @@ func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
 }
 
 func (job *SqlJob) format(b *bytes.Buffer, headers []string, columns [][]string) {
+	// Format as lines
 	if job.UseVerticalResult {
+		maxLen := 0
+		for i := range headers {
+			if len(headers[i]) > maxLen {
+				maxLen = len(headers[i])
+			}
+		}
+		maxLen += 2
 		for i := range columns {
 			b.WriteString("************** " + strconv.Itoa(i) + ". rows **************\n")
 			for j := range headers {
+				for k := maxLen - len(headers[j]); k >= 0; k-- {
+					b.WriteByte(' ')
+				}
 				b.WriteString(headers[j])
 				b.WriteString(": ")
 				b.WriteString(columns[i][j])
@@ -64,6 +75,8 @@ func (job *SqlJob) format(b *bytes.Buffer, headers []string, columns [][]string)
 		}
 		return
 	}
+
+	// Format as table
 	table := tablewriter.NewWriter(b)
 	table.SetHeader(headers)
 	for i := range columns {
