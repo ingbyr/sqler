@@ -13,6 +13,7 @@ import (
 var (
 	Version   string
 	BuildTime string
+	BuildBy   string
 )
 
 var (
@@ -71,6 +72,7 @@ func cli() {
 		doActions = true
 		fmt.Println("Version:", Version)
 		fmt.Println("Build Time:", BuildTime)
+		fmt.Println("Build By:", BuildBy)
 		os.Exit(0)
 	}
 
