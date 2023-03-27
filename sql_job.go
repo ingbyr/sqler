@@ -24,12 +24,12 @@ func (job *SqlJob) Msg() []byte {
 	// Convert sql rows to string array
 	b := new(bytes.Buffer)
 	b.WriteString(job.Prefix)
-	sqlColumns, sqlResultLines := job.convertSqlResults()
 	if job.Err != nil {
-		job.level = Error
-		b.WriteString(job.Err.Error())
-		b.WriteByte('\n')
-		return b.Bytes()
+		return job.MsgError(job.Err, b)
+	}
+	sqlColumns, sqlResultLines, err := convertSqlResults(job.SqlRows)
+	if err != nil {
+		return job.MsgError(err, b)
 	}
 	// Convert to table format
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
@@ -46,48 +46,9 @@ func (job *SqlJob) Msg() []byte {
 	return b.Bytes()
 }
 
-func (job *SqlJob) convertSqlResults() ([]string, [][]string) {
-	if job.Err != nil {
-		return nil, nil
-	}
-	lines := make([][]string, 0)
-	columns, err := job.SqlRows.Columns()
-	if err != nil {
-		job.Err = err
-		return nil, nil
-	}
-	values := make([]sql.RawBytes, len(columns))
-
-	// rows.Scan wants '[]interface{}' as an argument, so we must copy the
-	// references into such a slice
-	// See http://code.google.com/p/go-wiki/wiki/InterfaceSlice for details
-	scanArgs := make([]interface{}, len(values))
-	for i := range values {
-		scanArgs[i] = &values[i]
-	}
-
-	for job.SqlRows.Next() {
-		if err = job.SqlRows.Scan(scanArgs...); err != nil {
-			job.Err = err
-			return nil, nil
-		}
-		var value string
-		var line []string
-		for _, col := range values {
-			if col == nil {
-				value = "NULL"
-			} else {
-				value = string(col)
-			}
-			line = append(line, value)
-		}
-		lines = append(lines, line)
-	}
-
-	if err = job.SqlRows.Err(); err != nil {
-		job.Err = err
-		return nil, nil
-	}
-
-	return columns, lines
+func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
+	job.level = Error
+	b.WriteString(err.Error())
+	b.WriteByte('\n')
+	return b.Bytes()
 }

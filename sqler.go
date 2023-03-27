@@ -13,20 +13,35 @@ const (
 )
 
 type Sqler struct {
-	ctx     context.Context
-	cfg     *Config
-	dbSize  int
-	dbs     []*sql.DB
-	sqlJobs []chan *SqlJob
+	ctx         context.Context
+	cfg         *Config
+	dbSize      int
+	dbs         []*sql.DB
+	sqlJobs     []chan *SqlJob
+	tableMetas  []*TableMeta
+	columnMeats []*ColumnMeta
+}
+
+type TableMeta struct {
+	Name    string
+	Comment string
+}
+
+type ColumnMeta struct {
+	Name    string
+	Comment string
+	Type    string
 }
 
 func NewSqler(cfg *Config) *Sqler {
 	s := &Sqler{
-		ctx:     context.Background(),
-		cfg:     cfg,
-		dbSize:  len(cfg.DataSources),
-		dbs:     make([]*sql.DB, len(cfg.DataSources)),
-		sqlJobs: make([]chan *SqlJob, len(cfg.DataSources)),
+		ctx:         context.Background(),
+		cfg:         cfg,
+		dbSize:      len(cfg.DataSources),
+		dbs:         make([]*sql.DB, len(cfg.DataSources)),
+		sqlJobs:     make([]chan *SqlJob, len(cfg.DataSources)),
+		tableMetas:  make([]*TableMeta, 0, 32),
+		columnMeats: make([]*ColumnMeta, 0, 128),
 	}
 
 	// Init db and stmt job chan
@@ -57,22 +72,6 @@ func NewSqler(cfg *Config) *Sqler {
 	}
 
 	return s
-}
-
-func (s *Sqler) initConn(ctx context.Context, dbIdx int, initialized *sync.WaitGroup) {
-	ds := s.cfg.DataSources[dbIdx]
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArg)
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		printer.PrintError("failed to parse dsn", err)
-	}
-	if err = db.PingContext(ctx); err != nil {
-		printer.PrintError("failed to connect db", err)
-	}
-	printer.PrintInfo(fmt.Sprintf("[%d/%d] connected %s", dbIdx+1, s.dbSize, dsn))
-	s.dbs[dbIdx] = db
-	s.sqlJobs[dbIdx] = make(chan *SqlJob, SqlJobCacheSize)
-	initialized.Done()
 }
 
 // ExecSync executes sql in turn (each sql and database)
@@ -165,4 +164,32 @@ func (s *Sqler) waitForExecuted(jobs ...*SqlJob) {
 	for _, job := range jobs {
 		job.ExecWg.Wait()
 	}
+}
+
+func (s *Sqler) loadSchema() error {
+	db0 := s.dbs[0]
+	rows, err := db0.Query("select TABLE_NAME, TABLE_COMMENT from information_schema.TABLES")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		tm := &TableMeta{}
+		if err := rows.Scan(&tm.Name, &tm.Comment); err != nil {
+			return err
+		}
+		s.tableMetas = append(s.tableMetas, tm)
+	}
+
+	rows, err = db0.Query("select COLUMN_NAME, COLUMN_COMMENT, COLUMN_TYPE from information_schema.COLUMNS")
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		cm := &ColumnMeta{}
+		if err := rows.Scan(&cm.Name, &cm.Comment, &cm.Type); err != nil {
+			return err
+		}
+		s.columnMeats = append(s.columnMeats, cm)
+	}
+	return nil
 }

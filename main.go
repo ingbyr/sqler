@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
-	"errors"
 	"flag"
 	"fmt"
-	"io"
+	"github.com/c-bata/go-prompt"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,10 +25,9 @@ var (
 )
 
 var (
-	initSqlerOnce = &sync.Once{}
-	cfg           *Config
-	sqler         *Sqler
-	printer       *Printer
+	initOnce = &sync.Once{}
+	sqler    *Sqler
+	printer  *Printer
 )
 
 func parseFlags() {
@@ -49,10 +46,14 @@ func initQuitChan() chan os.Signal {
 }
 
 func initSqler() {
-	initSqlerOnce.Do(func() {
+	initOnce.Do(func() {
 		printer = NewPrinter()
-		cfg = LoadConfig("jdbc.properties")
+		cfg := LoadConfig("jdbc.properties")
 		sqler = NewSqler(cfg)
+		if err := sqler.loadSchema(); err != nil {
+			panic(err)
+		}
+		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
 	})
 }
 
@@ -84,21 +85,12 @@ func main() {
 		doActions = true
 		initSqler()
 		fmt.Println("Start mysql shell ...")
-		scanner := bufio.NewReader(os.Stdin)
 		for {
 			select {
 			case <-quit:
 				os.Exit(0)
 			default:
-				fmt.Printf("> ")
-				line, err := scanner.ReadString('\n')
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						return
-					} else {
-						panic(err)
-					}
-				}
+				line := prompt.Input("> ", completer)
 				line = strings.TrimSpace(line)
 				if line == "" {
 					continue
