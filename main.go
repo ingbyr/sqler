@@ -54,13 +54,7 @@ func initSqler() {
 		if err := sqler.loadSchema(); err != nil {
 			panic(err)
 		}
-		initPromptSuggest(
-			sqler.tableMetas,
-			sqler.columnMeats,
-			[][]string{{"/q", "Quit"}, {"/source", "Source sql files"}},
-			[]string{"SELECT", "select", "UPDATE", "update", "INSERT INTO", "insert into", "WHERE", "where",
-				"FROM", "from", "GROUP BY", "group by", "HAVING", "having", "LIMIT", "limit"},
-		)
+		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
 	})
 }
 

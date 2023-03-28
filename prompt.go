@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"github.com/c-bata/go-prompt"
+	"os"
 	"path/filepath"
 )
 
@@ -13,8 +15,13 @@ func completer(d prompt.Document) []prompt.Suggest {
 	return prompt.FilterHasPrefix(promptSuggest, d.GetWordBeforeCursor(), true)
 }
 
-func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta, commands [][]string, sqlKeywords []string) {
-	promptSuggest = make([]prompt.Suggest, 0, len(tms)+len(cms)+len(commands)+len(sqlKeywords))
+func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta) {
+	commands := cliCommandSuggests()
+	sqlKeywords := sqlKeyWords()
+	customSuggests := loadCustomSuggests("prompt.txt")
+
+	suggestSize := len(tms) + len(cms) + len(commands) + len(sqlKeywords) + len(customSuggests) + 8
+	promptSuggest = make([]prompt.Suggest, 0, suggestSize)
 
 	// Table meta
 	for _, tm := range tms {
@@ -48,6 +55,14 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta, commands [][]string,
 		})
 	}
 
+	// Some customSuggests
+	for _, custom := range customSuggests {
+		promptSuggest = append(promptSuggest, prompt.Suggest{
+			Text:        custom,
+			Description: "Custom",
+		})
+	}
+
 	// Same dir sql files
 	sqlFileNames := sqlFileNamesInCurrentDir()
 	for _, sqlFileName := range sqlFileNames {
@@ -58,10 +73,36 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta, commands [][]string,
 	}
 }
 
+func cliCommandSuggests() [][]string {
+	return [][]string{{"/q", "Quit"}, {"/source", "Source sql files"}}
+}
+
 func sqlFileNamesInCurrentDir() []string {
 	matches, err := filepath.Glob("*.sql")
 	if err != nil {
 		return nil
 	}
 	return matches
+}
+
+func sqlKeyWords() []string {
+	return []string{
+		"SELECT", "select", "UPDATE", "update", "INSERT INTO", "insert into", "WHERE", "where",
+		"FROM", "from", "GROUP BY", "group by", "HAVING", "having", "LIMIT", "limit", "join", "JOIN",
+		"left join", "LEFT JOIN", "right join", "RIGHT join"}
+}
+
+func loadCustomSuggests(promptFile string) []string {
+	sqlFile, err := os.Open(promptFile)
+	if err != nil {
+		return nil
+	}
+
+	scanner := bufio.NewScanner(sqlFile)
+	scanner.Split(bufio.ScanLines)
+	suggests := make([]string, 0)
+	for scanner.Scan() {
+		suggests = append(suggests, scanner.Text())
+	}
+	return suggests
 }

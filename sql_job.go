@@ -62,7 +62,7 @@ func (job *SqlJob) format(b *bytes.Buffer, headers []string, columns [][]string)
 		}
 		maxLen += 2
 		for i := range columns {
-			b.WriteString("************** " + strconv.Itoa(i) + ". rows **************\n")
+			b.WriteString("******************* " + strconv.Itoa(i) + ". rows *******************\n")
 			for j := range headers {
 				for k := maxLen - len(headers[j]); k >= 0; k-- {
 					b.WriteByte(' ')

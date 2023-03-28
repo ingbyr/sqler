@@ -1,0 +1,2 @@
+select * from sys_user limit 10\G
+select * from sys_menu limit 20\G
