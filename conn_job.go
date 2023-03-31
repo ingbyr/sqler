@@ -39,7 +39,7 @@ func (job *ConnJob) ErrorQuit() bool {
 func (job *ConnJob) Exec(s *Sqler) {
 	defer job.ExecWg.Done()
 	ds := s.cfg.DataSources[job.Idx]
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArg)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.URL, ds.Schema, s.cfg.DataSourceArg)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		job.Result.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))

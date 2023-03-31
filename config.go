@@ -1,68 +1,34 @@
 package main
 
 import (
-	"bufio"
+	"gopkg.in/yaml.v3"
 	"os"
-	"strings"
 )
 
 type Config struct {
-	DataSources   []*DataSource
-	DataSourceArg string
+	DataSourceArg string             `yaml:"dataSourceArg"`
+	DataSources   []DataSourceConfig `yaml:"dataSources"`
 }
 
-type DataSource struct {
-	Url      string
-	Schema   string
-	Username string
-	Password string
+type DataSourceConfig struct {
+	DataSourceBase  interface{} `yaml:"dataSourceBase,omitempty"`
+	Type            string      `yaml:"type"`
+	URL             string      `yaml:"url"`
+	Schema          string      `yaml:"schema"`
+	Username        string      `yaml:"username"`
+	Password        string      `yaml:"password"`
+	DataSource00001 interface{} `yaml:"dataSource00001,omitempty"`
+	DataSource00002 interface{} `yaml:"dataSource00002,omitempty"`
 }
 
-func NewDataSource() *DataSource {
-	return &DataSource{}
-}
-
-func (ds *DataSource) Loaded() bool {
-	return ds.Url != "" && ds.Username != "" && ds.Password != ""
-}
-
-func LoadConfig(dataSourceFile string) *Config {
-	file, err := os.Open(dataSourceFile)
+func LoadConfig(configFile string) *Config {
+	file, err := os.ReadFile(configFile)
 	if err != nil {
 		panic(err)
 	}
-	scanner := bufio.NewScanner(file)
-	cfg := &Config{
-		DataSources:   make([]*DataSource, 0),
-		DataSourceArg: "collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true",
-	}
-	ds := NewDataSource()
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "#") || line == "" {
-			continue
-		}
-		kv := strings.Split(line, "=")
-		if len(kv) < 2 {
-			panic("can not parse: '" + line + "'")
-		}
-		k := strings.TrimSpace(kv[0])
-		v := strings.Join(kv[1:], "=")
-
-		if strings.HasSuffix(k, "url") {
-			vs := strings.Split(strings.TrimPrefix(v, "jdbc:mysql://"), "/")
-			ds.Url = vs[0]
-			ds.Schema = strings.Split(vs[1], "?")[0]
-		} else if strings.HasSuffix(k, "username") {
-			ds.Username = v
-		} else if strings.HasSuffix(k, "password") {
-			ds.Password = v
-		}
-
-		if ds.Loaded() {
-			cfg.DataSources = append(cfg.DataSources, ds)
-			ds = NewDataSource()
-		}
+	cfg := new(Config)
+	if err = yaml.Unmarshal(file, cfg); err != nil {
+		panic(err)
 	}
 	return cfg
 }

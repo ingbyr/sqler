@@ -137,7 +137,7 @@ func (s *Sqler) totalStmtSize(stmtSize int) int {
 
 func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg *sync.WaitGroup) *SqlJob {
 	ds := s.cfg.DataSources[dbId]
-	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.Url, ds.Schema, stmt)
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.URL, ds.Schema, stmt)
 	execWg := &sync.WaitGroup{}
 	execWg.Add(1)
 	stmt, useVerticalResult := s.checkStmtOptions(stmt)

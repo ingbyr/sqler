@@ -49,7 +49,7 @@ func initQuitChan() chan os.Signal {
 func initSqler() {
 	initOnce.Do(func() {
 		printer = NewPrinter()
-		cfg := LoadConfig("jdbc.properties")
+		cfg := LoadConfig("config.yml")
 		sqler = NewSqler(cfg)
 		if err := sqler.loadSchema(); err != nil {
 			panic(err)

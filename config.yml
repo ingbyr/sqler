@@ -1,0 +1,20 @@
+dataSourceArg: collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true
+dataSources:
+  - dataSourceBase:
+    type: mysql
+    url: 127.0.0.1
+    schema: sqler_demo
+    username: root
+    password: root
+  - dataSource00001:
+    type: mysql
+    url: 127.0.0.1
+    schema: sqler_demo
+    username: root
+    password: root
+  - dataSource00002:
+    type: mysql
+    url: 127.0.0.1
+    schema: sqler_demo
+    username: root
+    password: root
