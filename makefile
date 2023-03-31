@@ -10,3 +10,12 @@ build-linux: generate
 	CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X 'main.Version=`git log --pretty=format:'%H' -1`' -X 'main.BuildTime=`date '+%Y-%m-%d %H:%M:%S'`' -X 'main.BuildBy=`go version`'" -o bin/sqler .
 
 build: build-win build-linux
+
+#############################################
+# Build sharding sphere jdbc config converter
+
+build-ss-win: generate
+	cd cmd/ss; CGO_ENABLE=0 GOOS=windows go build -ldflags="-s -w -X 'main.Version=`git log --pretty=format:'%H' -1`' -X 'main.BuildTime=`date '+%Y-%m-%d %H:%M:%S'`' -X 'main.BuildBy=`go version`'" -o ../../bin/sqler-ss.exe .
+
+build-ss-linux: generate
+	cd cmd/ss; CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X 'main.Version=`git log --pretty=format:'%H' -1`' -X 'main.BuildTime=`date '+%Y-%m-%d %H:%M:%S'`' -X 'main.BuildBy=`go version`'" -o ../../bin/sqler-ss .

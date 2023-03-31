@@ -6,6 +6,7 @@ import (
 	"github.com/c-bata/go-prompt"
 	"os"
 	"os/signal"
+	"sqler/pkg"
 	"strings"
 	"sync"
 )
@@ -49,10 +50,10 @@ func initQuitChan() chan os.Signal {
 func initSqler() {
 	initOnce.Do(func() {
 		printer = NewPrinter()
-		cfg, errYmL := LoadConfig("config.yml")
+		cfg, errYmL := pkg.LoadConfigFromFile("config.yml")
 		if errYmL != nil {
 			var errYaml error
-			cfg, errYaml = LoadConfig("config.yaml")
+			cfg, errYaml = pkg.LoadConfigFromFile("config.yaml")
 			if errYaml != nil {
 				panic(errYaml)
 			}

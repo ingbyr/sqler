@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"sqler/pkg"
 	"strings"
 	"sync"
 )
@@ -15,7 +16,7 @@ const (
 
 type Sqler struct {
 	ctx         context.Context
-	cfg         *Config
+	cfg         *pkg.Config
 	dbSize      int
 	dbs         []*sql.DB
 	sqlJobs     []chan *SqlJob
@@ -34,7 +35,7 @@ type ColumnMeta struct {
 	Type    string
 }
 
-func NewSqler(cfg *Config) *Sqler {
+func NewSqler(cfg *pkg.Config) *Sqler {
 	s := &Sqler{
 		ctx:         context.Background(),
 		cfg:         cfg,
@@ -137,7 +138,7 @@ func (s *Sqler) totalStmtSize(stmtSize int) int {
 
 func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg *sync.WaitGroup) *SqlJob {
 	ds := s.cfg.DataSources[dbId]
-	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.URL, ds.Schema, stmt)
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, ds.Url, ds.Schema, stmt)
 	execWg := &sync.WaitGroup{}
 	execWg.Add(1)
 	stmt, useVerticalResult := s.checkStmtOptions(stmt)
