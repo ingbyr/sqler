@@ -21,14 +21,14 @@ type DataSourceConfig struct {
 	DataSource00002 interface{} `yaml:"dataSource00002,omitempty"`
 }
 
-func LoadConfig(configFile string) *Config {
+func LoadConfig(configFile string) (*Config, error) {
 	file, err := os.ReadFile(configFile)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	cfg := new(Config)
 	if err = yaml.Unmarshal(file, cfg); err != nil {
-		panic(err)
+		return nil, err
 	}
-	return cfg
+	return cfg, nil
 }

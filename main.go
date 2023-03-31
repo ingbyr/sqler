@@ -49,7 +49,14 @@ func initQuitChan() chan os.Signal {
 func initSqler() {
 	initOnce.Do(func() {
 		printer = NewPrinter()
-		cfg := LoadConfig("config.yml")
+		cfg, errYmL := LoadConfig("config.yml")
+		if errYmL != nil {
+			var errYaml error
+			cfg, errYaml = LoadConfig("config.yaml")
+			if errYaml != nil {
+				panic(errYaml)
+			}
+		}
 		sqler = NewSqler(cfg)
 		if err := sqler.loadSchema(); err != nil {
 			panic(err)
