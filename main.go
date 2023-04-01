@@ -92,7 +92,8 @@ func cli() {
 			executor,
 			completer,
 			prompt.OptionPrefix("> "),
-			prompt.OptionTitle("sqler"))
+			prompt.OptionTitle("sqler"),
+		)
 		p.Run()
 	}
 
@@ -107,10 +108,7 @@ func executor(line string) {
 		return
 	}
 
-	if line == "/q" {
-		os.Exit(0)
-	}
-
+	// Source sql files
 	if strings.HasPrefix(line, "/source") {
 		files := strings.Split(line, " ")[1:]
 		for _, file := range files {
