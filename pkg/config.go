@@ -18,6 +18,14 @@ type DataSourceConfig struct {
 	Schema   string `yaml:"schema"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+	Enabled  bool   `yaml:"enabled"`
+}
+
+func NewConfig() *Config {
+	return &Config{
+		DataSourceArgs: DefaultDataSourceArgs,
+		DataSources:    make([]DataSourceConfig, 0),
+	}
 }
 
 func LoadConfigFromFile(configFile string) (*Config, error) {

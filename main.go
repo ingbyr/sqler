@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"github.com/c-bata/go-prompt"
+	"github.com/olekukonko/tablewriter"
 	"os"
 	"os/signal"
 	"sqler/pkg"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -109,15 +112,36 @@ func executor(line string) {
 	}
 
 	// Source sql files
-	if strings.HasPrefix(line, "/source") {
+	if strings.HasPrefix(line, pkg.CmdSource) {
 		files := strings.Split(line, " ")[1:]
-		for _, file := range files {
-			execSql(false, LoadSqlFile(file)...)
+		sourceSqlFiles(files)
+		return
+	}
+
+	// Show current data source
+	if strings.HasPrefix(line, pkg.CmdDatasource) {
+		b := new(bytes.Buffer)
+		table := tablewriter.NewWriter(b)
+		table.SetHeader([]string{"ID", "URL", "Schema", "Enabled"})
+		for i, ds := range sqler.cfg.DataSources {
+			table.Append([]string{strconv.Itoa(i),
+				ds.Url, ds.Schema, strconv.FormatBool(ds.Enabled)})
 		}
+		table.Render()
+		printer.PrintInfo(b.String())
 		return
 	}
 
 	execSql(false, line)
+}
+
+func sourceSqlFiles(files []string) {
+	if len(files) == 0 {
+		return
+	}
+	for _, file := range files {
+		execSql(false, LoadSqlFile(file)...)
+	}
 }
 
 func execSql(stopWhenError bool, sqlStmt ...string) {

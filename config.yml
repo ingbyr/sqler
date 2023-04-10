@@ -5,13 +5,16 @@ dataSources:
       schema: sqler_demo
       username: root
       password: root
+      enabled: true
     - type: mysql
       url: 127.0.0.1:3306
       schema: sqler_demo
       username: root
       password: root
+      enabled: true
     - type: mysql
       url: 127.0.0.1:3306
       schema: sqler_demo
       username: root
       password: root
+      enabled: true

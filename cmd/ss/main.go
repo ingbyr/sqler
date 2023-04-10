@@ -32,10 +32,7 @@ func main() {
 		panic(err)
 	}
 
-	cfg := &pkg.Config{
-		DataSourceArgs: pkg.DefaultDataSourceArgs,
-		DataSources:    make([]pkg.DataSourceConfig, 0, len(ssCfg.DataSources)),
-	}
+	cfg := pkg.NewConfig()
 	for _, ssDs := range ssCfg.DataSources {
 		// FIXME Support general config
 		url, schema := parseJdbcUrl(ssDs["jdbcUrl"])
@@ -45,6 +42,7 @@ func main() {
 			Schema:   schema,
 			Username: ssDs["username"],
 			Password: ssDs["password"],
+			Enabled:  true,
 		})
 	}
 	out, err := yaml.Marshal(cfg)
