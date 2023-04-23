@@ -21,6 +21,7 @@ var (
 )
 
 var (
+	flagConfig      string
 	flagSqlFile     string
 	flagInteractive bool
 	flagParallel    bool
@@ -36,6 +37,7 @@ var (
 )
 
 func parseFlags() {
+	flag.StringVar(&flagConfig, "c", "config.yml", "(config) 配置文件")
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
 	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行模式")
@@ -53,7 +55,7 @@ func initQuitChan() chan os.Signal {
 func initSqler() {
 	initOnce.Do(func() {
 		printer = NewPrinter()
-		cfg, errYmL := pkg.LoadConfigFromFile("config.yml")
+		cfg, errYmL := pkg.LoadConfigFromFile(flagConfig)
 		if errYmL != nil {
 			var errYaml error
 			cfg, errYaml = pkg.LoadConfigFromFile("config.yaml")
@@ -94,7 +96,7 @@ func cli() {
 		p := prompt.New(
 			executor,
 			completer,
-			prompt.OptionPrefix("> "),
+			prompt.OptionPrefix(fmt.Sprintf("(%s) > ", flagConfig)),
 			prompt.OptionTitle("sqler"),
 		)
 		p.Run()

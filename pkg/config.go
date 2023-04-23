@@ -8,6 +8,7 @@ import (
 const DefaultDataSourceArgs = "collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true"
 
 type Config struct {
+	FileName       string             `yaml:"-"`
 	DataSourceArgs string             `yaml:"dataSourceArgs"`
 	DataSources    []DataSourceConfig `yaml:"dataSources"`
 }
