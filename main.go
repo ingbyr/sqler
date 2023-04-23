@@ -140,7 +140,7 @@ func sourceSqlFiles(files []string) {
 		return
 	}
 	for _, file := range files {
-		execSql(false, LoadSqlFile(file)...)
+		execSql(true, LoadSqlFile(file)...)
 	}
 }
 
