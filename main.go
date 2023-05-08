@@ -31,9 +31,10 @@ var (
 )
 
 var (
-	initOnce = &sync.Once{}
-	sqler    *Sqler
-	printer  *Printer
+	initOnce     = &sync.Once{}
+	sqler        *Sqler
+	printer      *Printer
+	sqlStmtCache *strings.Builder
 )
 
 func parseFlags() {
@@ -68,6 +69,7 @@ func initSqler() {
 			panic(err)
 		}
 		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+		sqlStmtCache = new(strings.Builder)
 	})
 }
 
@@ -96,7 +98,16 @@ func cli() {
 		p := prompt.New(
 			executor,
 			completer,
-			prompt.OptionPrefix(fmt.Sprintf("(%s) > ", flagConfig)),
+			//prompt.OptionPrefix(fmt.Sprintf("(%s) > ", flagConfig)),
+			prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
+				newPrefix := ""
+				if sqlStmtCache.Len() > 0 {
+					newPrefix = fmt.Sprintf("(%s) sql > ", flagConfig)
+				} else {
+					newPrefix = fmt.Sprintf("(%s) > ", flagConfig)
+				}
+				return newPrefix, true
+			}),
 			prompt.OptionTitle("sqler"),
 		)
 		p.Run()
@@ -134,7 +145,20 @@ func executor(line string) {
 		return
 	}
 
-	execSql(false, line)
+	if pkg.CmdClear == line {
+		sqlStmtCache = new(strings.Builder)
+		return
+	}
+
+	executable := strings.HasSuffix(line, ";")
+	if executable {
+		line = line[:len(line)-1]
+	}
+	sqlStmtCache.WriteString(line)
+	if executable {
+		execSql(false, sqlStmtCache.String())
+		sqlStmtCache = new(strings.Builder)
+	}
 }
 
 func sourceSqlFiles(files []string) {

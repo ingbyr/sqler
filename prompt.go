@@ -5,6 +5,7 @@ import (
 	"github.com/c-bata/go-prompt"
 	"os"
 	"path/filepath"
+	"sqler/pkg"
 )
 
 var (
@@ -74,7 +75,11 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta) {
 }
 
 func cliCommandSuggests() [][]string {
-	return [][]string{{"/q", "Quit"}, {"/source", "Source sql files"}}
+	return [][]string{
+		{pkg.CmdDatasource, "Show current data sources"},
+		{pkg.CmdSource, "Source sql files"},
+		{pkg.CmdClear, "Clear sql"},
+	}
 }
 
 func sqlFileNamesInCurrentDir() []string {
