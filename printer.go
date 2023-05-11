@@ -29,12 +29,18 @@ func NewPrinter() *Printer {
 }
 
 func (p *Printer) WriteString(s string) (n int, err error) {
-	fmt.Print(s)
-	return p.outputFile.WriteString(s)
+	return os.Stdout.WriteString(s)
 }
 
 func (p *Printer) Write(b []byte) (n int, err error) {
-	_, _ = os.Stdout.Write(b)
+	return os.Stdout.Write(b)
+}
+
+func (p *Printer) SaveString(s string) (int, error) {
+	return p.outputFile.WriteString(s)
+}
+
+func (p *Printer) SaveBytes(b []byte) (int, error) {
 	return p.outputFile.Write(b)
 }
 
@@ -57,7 +63,7 @@ func (p *Printer) PrintInfo(msg string) {
 }
 
 func (p *Printer) LogInfo(msg string) {
-	p.Print(NewStrPrintJob(msg, Info))
+	p.Print(NewStrPrintJob(msg, Info).SetVisible(false))
 }
 
 func (p *Printer) PrintError(msg string, err error) {
@@ -70,10 +76,21 @@ func (p *Printer) doPrint() {
 		case job := <-p.jobs:
 			job.WaitForPrint()
 			if job.Level() != Info {
-				p.WriteString(job.Level().String())
+				levelString := job.Level().String()
+				if job.Visible() {
+					p.WriteString(levelString)
+				}
+				p.SaveString(levelString)
 			}
-			p.Write(job.Msg())
-			p.Write([]byte("\n"))
+			msg := job.Msg()
+			if job.Visible() {
+				p.Write(msg)
+			}
+			p.SaveBytes(msg)
+			if job.Visible() {
+				p.Write([]byte("\n"))
+			}
+			p.SaveBytes([]byte("\n"))
 			job.Printed().Done()
 			if job.PrintWg() != nil {
 				job.PrintWg().Done()
