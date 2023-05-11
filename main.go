@@ -54,7 +54,15 @@ func initQuitChan() chan os.Signal {
 }
 
 func initSqler() {
-	printer = NewPrinter()
+	if printer == nil {
+		printer = NewPrinter()
+	}
+	if sqler == nil {
+		newSqler()
+	}
+}
+
+func newSqler() {
 	cfg, err := pkg.LoadConfigFromFile(configFile)
 	if err != nil {
 		panic(err)
@@ -94,15 +102,12 @@ func cli() {
 			completer,
 			//prompt.OptionPrefix(fmt.Sprintf("(%s) > ", flagConfig)),
 			prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
-				newPrefix := ""
-				if sqlStmtCache.Len() > 0 {
-					newPrefix = fmt.Sprintf("(%s) sql > ", configFile)
-				} else {
-					newPrefix = fmt.Sprintf("(%s) > ", configFile)
-				}
-				return newPrefix, true
+				return currentPrefix(), true
 			}),
 			prompt.OptionTitle("sqler"),
+			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
+				printer.PrintInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
+			}),
 		)
 		p.Run()
 	}
@@ -110,6 +115,16 @@ func cli() {
 	if !doActions {
 		flag.PrintDefaults()
 	}
+}
+
+func currentPrefix() string {
+	prefix := ""
+	if sqlStmtCache.Len() > 0 {
+		prefix = fmt.Sprintf("(%s) sql > ", configFile)
+	} else {
+		prefix = fmt.Sprintf("(%s) > ", configFile)
+	}
+	return prefix
 }
 
 func executor(line string) {
@@ -153,7 +168,7 @@ func executor(line string) {
 			return
 		}
 		configFile = configFiles[0]
-		initSqler()
+		newSqler()
 		return
 	}
 

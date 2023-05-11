@@ -53,11 +53,15 @@ func (p *Printer) Print(job PrintJob) {
 }
 
 func (p *Printer) PrintInfo(msg string) {
-	p.Print(NewStrPrintJob(msg, Info, nil, nil))
+	p.Print(NewStrPrintJob(msg, Info))
+}
+
+func (p *Printer) LogInfo(msg string) {
+	p.Print(NewStrPrintJob(msg, Info))
 }
 
 func (p *Printer) PrintError(msg string, err error) {
-	p.Print(NewStrPrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error, nil, nil))
+	p.Print(NewStrPrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
 }
 
 func (p *Printer) doPrint() {

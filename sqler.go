@@ -142,13 +142,16 @@ func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg
 	execWg := &sync.WaitGroup{}
 	execWg.Add(1)
 	stmt, useVerticalResult := s.checkStmtOptions(stmt)
+	defaultPrintJob := NewDefaultPrintJob(Info)
+	defaultPrintJob.SetPrintable(execWg)
+	defaultPrintJob.SetPrintWg(printWg)
 	job := &SqlJob{
 		Stmt:              stmt,
 		ExecWg:            execWg,
 		Db:                s.dbs[dbId],
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
-		DefaultPrintJob:   NewDefaultPrintJob(Info, execWg, printWg),
+		DefaultPrintJob:   defaultPrintJob,
 	}
 	s.sqlJobs[dbId] <- job
 	// Send print job

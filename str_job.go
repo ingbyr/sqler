@@ -1,17 +1,19 @@
 package main
 
-import "sync"
-
 type StrPrintJob struct {
-	msg string
+	msg     string
+	visible bool
 	*DefaultPrintJob
 }
 
-func NewStrPrintJob(msg string, level Level, printable *sync.WaitGroup, printWg *sync.WaitGroup) *StrPrintJob {
-	return &StrPrintJob{
+func NewStrPrintJob(msg string, level Level) *StrPrintJob {
+	job := &StrPrintJob{
 		msg:             msg,
-		DefaultPrintJob: NewDefaultPrintJob(level, printable, printWg),
+		visible:         true,
+		DefaultPrintJob: NewDefaultPrintJob(level),
 	}
+	job.printJob = job
+	return job
 }
 
 func (p *StrPrintJob) Msg() []byte {

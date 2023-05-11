@@ -19,11 +19,14 @@ type ConnJob struct {
 func NewConnJob(idx int, printWg *sync.WaitGroup) *ConnJob {
 	execWg := new(sync.WaitGroup)
 	execWg.Add(1)
+	defaultPrintJob := NewDefaultPrintJob(Info)
+	defaultPrintJob.SetPrintable(execWg)
+	defaultPrintJob.SetPrintWg(printWg)
 	return &ConnJob{
 		Idx:             idx,
 		ExecWg:          execWg,
 		Result:          new(bytes.Buffer),
-		DefaultPrintJob: NewDefaultPrintJob(Info, execWg, printWg),
+		DefaultPrintJob: defaultPrintJob,
 	}
 }
 
