@@ -75,11 +75,7 @@ func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta) {
 }
 
 func cliCommandSuggests() [][]string {
-	return [][]string{
-		{pkg.CmdDatasource, "Show current data sources"},
-		{pkg.CmdSource, "Source sql files"},
-		{pkg.CmdClear, "Clear sql"},
-	}
+	return pkg.CommandSuggests()
 }
 
 func sqlFileNamesInCurrentDir() []string {

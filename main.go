@@ -11,7 +11,6 @@ import (
 	"sqler/pkg"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var (
@@ -28,10 +27,10 @@ var (
 	flagParallel0   bool
 	flagVersion     bool
 	quit            = initQuitChan()
+	configFile      string
 )
 
 var (
-	initOnce     = &sync.Once{}
 	sqler        *Sqler
 	printer      *Printer
 	sqlStmtCache *strings.Builder
@@ -45,6 +44,7 @@ func parseFlags() {
 	flag.BoolVar(&flagParallel0, "p0", false, "(parallel0) 完全并行执行模式")
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.Parse()
+	configFile = flagConfig
 }
 
 func initQuitChan() chan os.Signal {
@@ -54,23 +54,17 @@ func initQuitChan() chan os.Signal {
 }
 
 func initSqler() {
-	initOnce.Do(func() {
-		printer = NewPrinter()
-		cfg, errYmL := pkg.LoadConfigFromFile(flagConfig)
-		if errYmL != nil {
-			var errYaml error
-			cfg, errYaml = pkg.LoadConfigFromFile("config.yaml")
-			if errYaml != nil {
-				panic(errYaml)
-			}
-		}
-		sqler = NewSqler(cfg)
-		if err := sqler.loadSchema(); err != nil {
-			panic(err)
-		}
-		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
-		sqlStmtCache = new(strings.Builder)
-	})
+	printer = NewPrinter()
+	cfg, err := pkg.LoadConfigFromFile(configFile)
+	if err != nil {
+		panic(err)
+	}
+	sqler = NewSqler(cfg)
+	if err := sqler.loadSchema(); err != nil {
+		panic(err)
+	}
+	initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+	sqlStmtCache = new(strings.Builder)
 }
 
 func cli() {
@@ -102,9 +96,9 @@ func cli() {
 			prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
 				newPrefix := ""
 				if sqlStmtCache.Len() > 0 {
-					newPrefix = fmt.Sprintf("(%s) sql > ", flagConfig)
+					newPrefix = fmt.Sprintf("(%s) sql > ", configFile)
 				} else {
-					newPrefix = fmt.Sprintf("(%s) > ", flagConfig)
+					newPrefix = fmt.Sprintf("(%s) > ", configFile)
 				}
 				return newPrefix, true
 			}),
@@ -145,8 +139,21 @@ func executor(line string) {
 		return
 	}
 
+	// Clear sql cache
 	if pkg.CmdClear == line {
 		sqlStmtCache = new(strings.Builder)
+		return
+	}
+
+	// Active another config
+	if strings.HasPrefix(line, pkg.CmdActive) {
+		configFiles := strings.Split(line, " ")[1:]
+		if len(configFiles) != 1 {
+			printer.PrintInfo("args 0 must be one string")
+			return
+		}
+		configFile = configFiles[0]
+		initSqler()
 		return
 	}
 
