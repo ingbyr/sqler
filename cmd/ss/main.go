@@ -33,15 +33,21 @@ func main() {
 	}
 
 	cfg := pkg.NewConfig()
-	for _, ssDs := range ssCfg.DataSources {
-		// FIXME Support general config
-		url, schema := parseJdbcUrl(ssDs["jdbcUrl"])
+	dataSources := ssCfg.DataSources.Content
+	for i := 0; i < len(dataSources); i += 2 {
+		//dsKey := dataSources[i]
+		dsContent := dataSources[i+1]
+		ds := map[string]string{}
+		if err := dsContent.Decode(ds); err != nil {
+			panic(err)
+		}
+		url, schema := parseJdbcUrl(ds["jdbcUrl"])
 		cfg.AddDataSource(pkg.DataSourceConfig{
 			Type:     pkg.DsTypeMysql,
 			Url:      url,
 			Schema:   schema,
-			Username: ssDs["username"],
-			Password: ssDs["password"],
+			Username: ds["username"],
+			Password: ds["password"],
 			Enabled:  true,
 		})
 	}
@@ -53,7 +59,8 @@ func main() {
 }
 
 type ShardingSphereConfig struct {
-	DataSources map[string]map[string]string `yaml:"dataSources"`
+	//DataSources map[string]map[string]string `yaml:"dataSources"`
+	DataSources yaml.Node `yaml:"dataSources"`
 }
 
 func parseJdbcUrl(jdbcUrl string) (string, string) {
