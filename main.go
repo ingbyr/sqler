@@ -32,7 +32,7 @@ var (
 
 var (
 	sqler        *Sqler
-	printer      *Printer
+	jobExecutor  *JobExecutor
 	sqlStmtCache *strings.Builder
 )
 
@@ -54,8 +54,8 @@ func initQuitChan() chan os.Signal {
 }
 
 func initSqler() {
-	if printer == nil {
-		printer = NewPrinter()
+	if jobExecutor == nil {
+		jobExecutor = NewJobExecutor()
 	}
 	if sqler == nil {
 		newSqler()
@@ -90,7 +90,7 @@ func cli() {
 	if flagSqlFile != "" {
 		doActions = true
 		initSqler()
-		printer.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
+		jobExecutor.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		execSql(true, LoadSqlFile(flagSqlFile)...)
 	}
 
@@ -106,7 +106,7 @@ func cli() {
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				printer.LogInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
+				jobExecutor.LogInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
 			}),
 		)
 		p.Run()
@@ -150,7 +150,7 @@ func executor(line string) {
 				ds.Url, ds.Schema, strconv.FormatBool(ds.Enabled)})
 		}
 		table.Render()
-		printer.PrintInfo(b.String())
+		jobExecutor.PrintInfo(b.String())
 		return
 	}
 
@@ -164,7 +164,7 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdActive) {
 		configFiles := strings.Split(line, " ")[1:]
 		if len(configFiles) != 1 {
-			printer.PrintInfo("args 0 must be one string")
+			jobExecutor.PrintInfo("args 0 must be one string")
 			return
 		}
 		configFile = configFiles[0]

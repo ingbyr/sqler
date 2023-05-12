@@ -1,21 +1,31 @@
 package main
 
-type StrPrintJob struct {
+var _ ExecutableJob = (*PrintJob)(nil)
+
+type PrintJob struct {
 	msg     string
 	visible bool
-	*DefaultPrintJob
+	*DefaultJob
 }
 
-func NewStrPrintJob(msg string, level Level) *StrPrintJob {
-	job := &StrPrintJob{
-		msg:             msg,
-		visible:         true,
-		DefaultPrintJob: NewDefaultPrintJob(level),
+func (p *PrintJob) DoExec() error {
+	return nil
+}
+
+func (p *PrintJob) SetWrapper(job *DefaultJob) {
+	p.DefaultJob = job
+}
+
+func NewPrintJob(msg string, level Level) Job {
+	printJob := &PrintJob{
+		msg:     msg,
+		visible: true,
 	}
-	job.printJob = job
-	return job
+	printJob.SetPrintable(true)
+
+	return NewJob(level, printJob)
 }
 
-func (p *StrPrintJob) Msg() []byte {
+func (p *PrintJob) Output() []byte {
 	return []byte(p.msg)
 }

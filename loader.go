@@ -10,10 +10,10 @@ import (
 func LoadSqlFile(sqlFilePath string) []string {
 	sqlFile, err := os.Open(sqlFilePath)
 	if err != nil {
-		printer.PrintError("Failed to open file "+sqlFilePath, err)
+		jobExecutor.PrintError("Failed to open file "+sqlFilePath, err)
 		return nil
 	}
-	printer.PrintInfo("Loading file " + sqlFilePath)
+	jobExecutor.PrintInfo("Loading file " + sqlFilePath)
 	scanner := bufio.NewScanner(sqlFile)
 	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if atEOF && len(data) == 0 {
@@ -36,6 +36,6 @@ func LoadSqlFile(sqlFilePath string) []string {
 			stmts = append(stmts, stmt)
 		}
 	}
-	printer.PrintInfo("Loaded file " + sqlFilePath)
+	jobExecutor.PrintInfo("Loaded file " + sqlFilePath)
 	return stmts
 }

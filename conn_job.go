@@ -1,61 +1,52 @@
 package main
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"sync"
 )
 
-var _ PrintJob = (*ConnJob)(nil)
+var _ ExecutableJob = (*ConnJob)(nil)
 
 type ConnJob struct {
-	Idx    int
-	ExecWg *sync.WaitGroup
-	Result *bytes.Buffer
-	*DefaultPrintJob
+	Idx   int
+	sqler *Sqler
+	*DefaultJob
 }
 
-func NewConnJob(idx int, printWg *sync.WaitGroup) *ConnJob {
-	execWg := new(sync.WaitGroup)
-	execWg.Add(1)
-	defaultPrintJob := NewDefaultPrintJob(Info)
-	defaultPrintJob.SetPrintable(execWg)
-	defaultPrintJob.SetPrintWg(printWg)
-	return &ConnJob{
-		Idx:             idx,
-		ExecWg:          execWg,
-		Result:          new(bytes.Buffer),
-		DefaultPrintJob: defaultPrintJob,
+func NewConnJob(idx int, doneGroup *sync.WaitGroup, sqler *Sqler) Job {
+	connJob := &ConnJob{
+		Idx:   idx,
+		sqler: sqler,
 	}
+	return NewJobGroup(Info, doneGroup, connJob)
 }
 
-func (job *ConnJob) Msg() []byte {
-	job.ExecWg.Wait()
-	return job.Result.Bytes()
+func (job *ConnJob) SetWrapper(defaultJob *DefaultJob) {
+	job.DefaultJob = defaultJob
 }
 
-func (job *ConnJob) ErrorQuit() bool {
+func (job *ConnJob) QuitWhenError() bool {
 	return true
 }
 
-func (job *ConnJob) Exec(s *Sqler) {
-	defer job.ExecWg.Done()
-	ds := s.cfg.DataSources[job.Idx]
-	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, s.cfg.DataSourceArgs)
+func (job *ConnJob) DoExec() error {
+	ds := job.sqler.cfg.DataSources[job.Idx]
+	dsArgs := job.sqler.cfg.DataSourceArgs
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, dsArgs)
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		job.Result.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))
+		job.output.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))
 		job.level = Error
-		return
+		return err
 	}
-	if err = db.PingContext(s.ctx); err != nil {
-		job.Result.WriteString(fmt.Sprintf("Failed to connect db, %v", err))
+	if err = db.PingContext(job.sqler.ctx); err != nil {
+		job.output.WriteString(fmt.Sprintf("Failed to connect db, %v", err))
 		job.level = Error
-		return
+		return err
 	}
-	job.Result.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, s.dbSize, dsn))
-	s.dbs[job.Idx] = db
-	s.sqlJobs[job.Idx] = make(chan *SqlJob, SqlJobCacheSize)
-	return
+	job.output.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, job.sqler.dbSize, dsn))
+	job.sqler.dbs[job.Idx] = db
+	job.sqler.sqlJobs[job.Idx] = make(chan *SqlJob, SqlJobCacheSize)
+	return nil
 }

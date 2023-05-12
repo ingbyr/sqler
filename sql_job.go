@@ -5,24 +5,31 @@ import (
 	"database/sql"
 	"github.com/olekukonko/tablewriter"
 	"strconv"
-	"sync"
 )
 
-var _ PrintJob = (*SqlJob)(nil)
+var _ ExecutableJob = (*SqlJob)(nil)
 
 type SqlJob struct {
 	Stmt              string
-	ExecWg            *sync.WaitGroup
 	Db                *sql.DB
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
 	Err               error
-	*DefaultPrintJob
+	*DefaultJob
 }
 
-func (job *SqlJob) Msg() []byte {
-	job.ExecWg.Wait()
+func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
+	job.DefaultJob = defaultJob
+}
+
+func (job *SqlJob) DoExec() error {
+	job.SqlRows, job.Err = job.Db.Query(job.Stmt)
+	return job.Err
+}
+
+func (job *SqlJob) Output() []byte {
+	job.WaitDone()
 	// Convert sql rows to string array
 	b := new(bytes.Buffer)
 	b.WriteString(job.Prefix)

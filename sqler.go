@@ -47,16 +47,16 @@ func NewSqler(cfg *pkg.Config) *Sqler {
 	}
 
 	// Init db and stmt job chan
-	printWg := &sync.WaitGroup{}
-	printWg.Add(s.dbSize)
+	doneGroup := &sync.WaitGroup{}
+	doneGroup.Add(s.dbSize)
 	for i := 0; i < s.dbSize; i++ {
-		connJob := NewConnJob(i, printWg)
+		connJob := NewConnJob(i, doneGroup, s)
 		go func() {
-			connJob.Exec(s)
+			connJob.MustExec()
 		}()
-		printer.Print(connJob)
+		jobExecutor.Print(connJob)
 	}
-	printWg.Wait()
+	doneGroup.Wait()
 
 	// Listen stmt job chan
 	for _, sc := range s.sqlJobs {
@@ -66,8 +66,7 @@ func NewSqler(cfg *pkg.Config) *Sqler {
 				case <-quit:
 					return
 				case job := <-stmtJobs:
-					job.SqlRows, job.Err = job.Db.Query(job.Stmt)
-					job.printable.Done()
+					job.Exec()
 				}
 			}
 		}(sc)
@@ -142,20 +141,16 @@ func (s *Sqler) Exec(stmt string, dbId int, jobId int, totalJobSize int, printWg
 	execWg := &sync.WaitGroup{}
 	execWg.Add(1)
 	stmt, useVerticalResult := s.checkStmtOptions(stmt)
-	defaultPrintJob := NewDefaultPrintJob(Info)
-	defaultPrintJob.SetPrintable(execWg)
-	defaultPrintJob.SetPrintWg(printWg)
 	job := &SqlJob{
 		Stmt:              stmt,
-		ExecWg:            execWg,
 		Db:                s.dbs[dbId],
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
-		DefaultPrintJob:   defaultPrintJob,
 	}
+	NewJob(Info, job)
 	s.sqlJobs[dbId] <- job
 	// Send print job
-	printer.Print(job)
+	jobExecutor.Print(job)
 	return job
 }
 
@@ -177,7 +172,7 @@ func (s *Sqler) shouldStop(jobs []*SqlJob) bool {
 
 func (s *Sqler) waitForExecuted(jobs ...*SqlJob) {
 	for _, job := range jobs {
-		job.ExecWg.Wait()
+		job.WaitDone()
 	}
 }
 
