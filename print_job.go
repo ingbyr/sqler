@@ -2,6 +2,16 @@ package main
 
 var _ ExecutableJob = (*PrintJob)(nil)
 
+func NewPrintJob(msg string, level Level) Job {
+	job := NewJob(level, &PrintJob{
+		msg:     msg,
+		visible: true,
+	})
+	job.SetPrintable(true)
+	job.SetDone(nil)
+	return job
+}
+
 type PrintJob struct {
 	msg     string
 	visible bool
@@ -14,16 +24,6 @@ func (p *PrintJob) DoExec() error {
 
 func (p *PrintJob) SetWrapper(job *DefaultJob) {
 	p.DefaultJob = job
-}
-
-func NewPrintJob(msg string, level Level) Job {
-	printJob := &PrintJob{
-		msg:     msg,
-		visible: true,
-	}
-	printJob.SetPrintable(true)
-
-	return NewJob(level, printJob)
 }
 
 func (p *PrintJob) Output() []byte {

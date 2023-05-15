@@ -60,7 +60,12 @@ type DefaultJob struct {
 
 func (d *DefaultJob) Exec() error {
 	err := d.job.DoExec()
-	d.done.Done()
+	if d.done != nil {
+		d.done.Done()
+	}
+	if d.doneGroup != nil {
+		d.doneGroup.Done()
+	}
 	return err
 }
 
