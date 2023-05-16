@@ -8,7 +8,7 @@ import (
 
 func TestLoadSchema(t *testing.T) {
 	a := assert.New(t)
-	jobExecutor = NewJobExecutor()
+	jobPrinter = NewJobPrinter()
 	cfg, _ := pkg.LoadConfigFromFile("jdbc.properties")
 	s := NewSqler(cfg)
 

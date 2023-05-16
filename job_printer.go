@@ -3,24 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 )
 
 const (
 	PrintJobCacheSize = 32
 )
 
-type JobExecutor struct {
+type JobPrinter struct {
 	outputFile *os.File
 	jobs       chan Job
 }
 
-func NewJobExecutor() *JobExecutor {
+func NewJobPrinter() *JobPrinter {
 	outputFile, err := os.OpenFile("output.log", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
-	p := &JobExecutor{
+	p := &JobPrinter{
 		outputFile: outputFile,
 		jobs:       make(chan Job, PrintJobCacheSize),
 	}
@@ -28,49 +27,42 @@ func NewJobExecutor() *JobExecutor {
 	return p
 }
 
-func (p *JobExecutor) WriteString(s string) (n int, err error) {
+func (p *JobPrinter) WriteString(s string) (n int, err error) {
 	return os.Stdout.WriteString(s)
 }
 
-func (p *JobExecutor) Write(b []byte) (n int, err error) {
+func (p *JobPrinter) Write(b []byte) (n int, err error) {
 	return os.Stdout.Write(b)
 }
 
-func (p *JobExecutor) SaveString(s string) (int, error) {
+func (p *JobPrinter) SaveString(s string) (int, error) {
 	return p.outputFile.WriteString(s)
 }
 
-func (p *JobExecutor) SaveBytes(b []byte) (int, error) {
+func (p *JobPrinter) SaveBytes(b []byte) (int, error) {
 	return p.outputFile.Write(b)
 }
 
-func (p *JobExecutor) WaitForPrinted() {
-	for {
-		if len(p.jobs) > 0 {
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			return
-		}
-	}
+func (p *JobPrinter) WaitForPrinted() {
 }
 
-func (p *JobExecutor) Print(job Job) {
+func (p *JobPrinter) Print(job Job) {
 	p.jobs <- job
 }
 
-func (p *JobExecutor) PrintInfo(msg string) {
+func (p *JobPrinter) PrintInfo(msg string) {
 	p.Print(NewPrintJob(msg, Info))
 }
 
-func (p *JobExecutor) LogInfo(msg string) {
+func (p *JobPrinter) LogInfo(msg string) {
 	p.Print(NewPrintJob(msg, Info))
 }
 
-func (p *JobExecutor) PrintError(msg string, err error) {
+func (p *JobPrinter) PrintError(msg string, err error) {
 	p.Print(NewPrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
 }
 
-func (p *JobExecutor) Execute() {
+func (p *JobPrinter) Execute() {
 	for {
 		select {
 		case job := <-p.jobs:
@@ -89,7 +81,7 @@ func (p *JobExecutor) Execute() {
 				p.Write([]byte("\n"))
 			}
 			p.SaveBytes([]byte("\n"))
-			if job.QuitWhenError() {
+			if job.PanicWhenError() {
 				os.Exit(1)
 			}
 		}

@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"sync"
 )
 
 var _ ExecutableJob = (*ConnJob)(nil)
@@ -14,19 +13,19 @@ type ConnJob struct {
 	*DefaultJob
 }
 
-func NewConnJob(idx int, doneGroup *sync.WaitGroup, sqler *Sqler) Job {
+func NewConnJob(idx int, sqler *Sqler) Job {
 	connJob := &ConnJob{
 		Idx:   idx,
 		sqler: sqler,
 	}
-	return NewJobGroup(Info, doneGroup, connJob)
+	return NewJob(Info, connJob)
 }
 
 func (job *ConnJob) SetWrapper(defaultJob *DefaultJob) {
 	job.DefaultJob = defaultJob
 }
 
-func (job *ConnJob) QuitWhenError() bool {
+func (job *ConnJob) PanicWhenError() bool {
 	return true
 }
 
@@ -34,7 +33,7 @@ func (job *ConnJob) DoExec() error {
 	ds := job.sqler.cfg.DataSources[job.Idx]
 	dsArgs := job.sqler.cfg.DataSourceArgs
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, dsArgs)
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open(ds.Type, dsn)
 	if err != nil {
 		job.output.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))
 		job.level = Error
@@ -47,6 +46,5 @@ func (job *ConnJob) DoExec() error {
 	}
 	job.output.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, job.sqler.dbSize, dsn))
 	job.sqler.dbs[job.Idx] = db
-	job.sqler.sqlJobs[job.Idx] = make(chan *SqlJob, SqlJobCacheSize)
 	return nil
 }

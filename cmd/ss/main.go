@@ -42,7 +42,7 @@ func main() {
 			panic(err)
 		}
 		url, schema := parseJdbcUrl(ds["jdbcUrl"])
-		cfg.AddDataSource(pkg.DataSourceConfig{
+		cfg.AddDataSource(&pkg.DataSourceConfig{
 			Type:     pkg.DsTypeMysql,
 			Url:      url,
 			Schema:   schema,

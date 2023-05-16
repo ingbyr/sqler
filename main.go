@@ -26,13 +26,12 @@ var (
 	flagParallel    bool
 	flagParallel0   bool
 	flagVersion     bool
-	quit            = initQuitChan()
 	configFile      string
 )
 
 var (
 	sqler        *Sqler
-	jobExecutor  *JobExecutor
+	jobPrinter   *JobPrinter
 	sqlStmtCache *strings.Builder
 )
 
@@ -40,7 +39,7 @@ func parseFlags() {
 	flag.StringVar(&flagConfig, "c", "config.yml", "(config) 配置文件")
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
-	flag.BoolVar(&flagParallel, "p", false, "(parallel) 并行执行模式")
+	flag.BoolVar(&flagParallel, "p", true, "(parallel) 并行执行模式")
 	flag.BoolVar(&flagParallel0, "p0", false, "(parallel0) 完全并行执行模式")
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.Parse()
@@ -53,26 +52,30 @@ func initQuitChan() chan os.Signal {
 	return quitChan
 }
 
-func initSqler() {
-	if jobExecutor == nil {
-		jobExecutor = NewJobExecutor()
-	}
-	if sqler == nil {
-		newSqler()
+func initComponents() {
+	initJobPrinter(false)
+	initSqler(false)
+}
+
+func initJobPrinter(override bool) {
+	if jobPrinter == nil || override {
+		jobPrinter = NewJobPrinter()
 	}
 }
 
-func newSqler() {
-	cfg, err := pkg.LoadConfigFromFile(configFile)
-	if err != nil {
-		panic(err)
+func initSqler(override bool) {
+	if sqler == nil || override {
+		cfg, err := pkg.LoadConfigFromFile(configFile)
+		if err != nil {
+			panic(err)
+		}
+		sqler = NewSqler(cfg)
+		if err := sqler.loadSchema(); err != nil {
+			panic(err)
+		}
+		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+		sqlStmtCache = new(strings.Builder)
 	}
-	sqler = NewSqler(cfg)
-	if err := sqler.loadSchema(); err != nil {
-		panic(err)
-	}
-	initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
-	sqlStmtCache = new(strings.Builder)
 }
 
 func cli() {
@@ -89,24 +92,23 @@ func cli() {
 
 	if flagSqlFile != "" {
 		doActions = true
-		initSqler()
-		jobExecutor.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
+		initComponents()
+		jobPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		execSql(true, LoadSqlFile(flagSqlFile)...)
 	}
 
 	if flagInteractive {
 		doActions = true
-		initSqler()
+		initComponents()
 		p := prompt.New(
 			executor,
 			completer,
-			//prompt.OptionPrefix(fmt.Sprintf("(%s) > ", flagConfig)),
 			prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
 				return currentPrefix(), true
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				jobExecutor.LogInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
+				jobPrinter.LogInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
 			}),
 		)
 		p.Run()
@@ -150,7 +152,7 @@ func executor(line string) {
 				ds.Url, ds.Schema, strconv.FormatBool(ds.Enabled)})
 		}
 		table.Render()
-		jobExecutor.PrintInfo(b.String())
+		jobPrinter.PrintInfo(b.String())
 		return
 	}
 
@@ -164,11 +166,11 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdActive) {
 		configFiles := strings.Split(line, " ")[1:]
 		if len(configFiles) != 1 {
-			jobExecutor.PrintInfo("args 0 must be one string")
+			jobPrinter.PrintInfo("args 0 must be one string")
 			return
 		}
 		configFile = configFiles[0]
-		newSqler()
+		initSqler(true)
 		return
 	}
 
@@ -197,8 +199,6 @@ func execSql(stopWhenError bool, sqlStmt ...string) {
 		sqler.ExecPara0(sqlStmt...)
 	} else if flagParallel {
 		sqler.ExecPara(stopWhenError, sqlStmt...)
-	} else {
-		sqler.ExecSync(stopWhenError, sqlStmt...)
 	}
 }
 

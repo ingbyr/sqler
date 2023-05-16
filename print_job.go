@@ -8,7 +8,7 @@ func NewPrintJob(msg string, level Level) Job {
 		visible: true,
 	})
 	job.SetPrintable(true)
-	job.SetDone(nil)
+	job.Done()
 	return job
 }
 
@@ -22,10 +22,10 @@ func (p *PrintJob) DoExec() error {
 	return nil
 }
 
-func (p *PrintJob) SetWrapper(job *DefaultJob) {
-	p.DefaultJob = job
-}
-
 func (p *PrintJob) Output() []byte {
 	return []byte(p.msg)
+}
+
+func (p *PrintJob) SetWrapper(job *DefaultJob) {
+	p.DefaultJob = job
 }

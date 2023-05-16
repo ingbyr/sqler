@@ -8,9 +8,9 @@ import (
 const DefaultDataSourceArgs = "collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true"
 
 type Config struct {
-	FileName       string             `yaml:"-"`
-	DataSourceArgs string             `yaml:"dataSourceArgs"`
-	DataSources    []DataSourceConfig `yaml:"dataSources"`
+	FileName       string              `yaml:"-"`
+	DataSourceArgs string              `yaml:"dataSourceArgs"`
+	DataSources    []*DataSourceConfig `yaml:"dataSources"`
 }
 
 type DataSourceConfig struct {
@@ -25,7 +25,7 @@ type DataSourceConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		DataSourceArgs: DefaultDataSourceArgs,
-		DataSources:    make([]DataSourceConfig, 0),
+		DataSources:    make([]*DataSourceConfig, 0),
 	}
 }
 
@@ -41,6 +41,6 @@ func LoadConfigFromFile(configFile string) (*Config, error) {
 	return cfg, nil
 }
 
-func (cfg *Config) AddDataSource(ds DataSourceConfig) {
+func (cfg *Config) AddDataSource(ds *DataSourceConfig) {
 	cfg.DataSources = append(cfg.DataSources, ds)
 }

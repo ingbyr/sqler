@@ -3,15 +3,33 @@ package main
 import (
 	"bytes"
 	"database/sql"
+	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"sqler/pkg"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 var _ ExecutableJob = (*SqlJob)(nil)
 
+func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB) Job {
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
+	execWg := &sync.WaitGroup{}
+	execWg.Add(1)
+	stmt, useVerticalResult := checkStmtOptions(stmt)
+	job := &SqlJob{
+		Stmt:              stmt,
+		DB:                db,
+		Prefix:            prefix,
+		UseVerticalResult: useVerticalResult,
+	}
+	return NewJob(Info, job)
+}
+
 type SqlJob struct {
 	Stmt              string
-	Db                *sql.DB
+	DB                *sql.DB
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
@@ -24,12 +42,13 @@ func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
 }
 
 func (job *SqlJob) DoExec() error {
-	job.SqlRows, job.Err = job.Db.Query(job.Stmt)
+	job.SqlRows, job.Err = job.DB.Query(job.Stmt)
 	return job.Err
 }
 
 func (job *SqlJob) Output() []byte {
-	job.WaitDone()
+	job.Wait()
+
 	// Convert sql rows to string array
 	b := new(bytes.Buffer)
 	b.WriteString(job.Prefix)
@@ -40,12 +59,13 @@ func (job *SqlJob) Output() []byte {
 	if err != nil {
 		return job.MsgError(err, b)
 	}
-	// Convert to table format
+
+	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		// Some DDL return nothing
 		b.Write([]byte("OK"))
 		return b.Bytes()
 	}
+
 	job.format(b, sqlColumns, sqlResultLines)
 
 	return b.Bytes()
@@ -90,4 +110,11 @@ func (job *SqlJob) format(b *bytes.Buffer, headers []string, columns [][]string)
 		table.Append(columns[i])
 	}
 	table.Render()
+}
+
+func checkStmtOptions(stmt string) (string, bool) {
+	if strings.HasSuffix(stmt, `\G`) {
+		return stmt[:len(stmt)-2], true
+	}
+	return stmt, false
 }

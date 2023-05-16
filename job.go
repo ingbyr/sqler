@@ -34,16 +34,18 @@ type ExecutableJob interface {
 
 type Job interface {
 	Output() []byte
-	MustExec()
+	Exec() error
 	Level() Level
 	Wait()
-	QuitWhenError() bool
-	WaitDone()
+	Done()
 	SetDone(done *sync.WaitGroup)
-	WaitDoneGroup()
+	WaitGroup()
+	DoneGroup()
 	SetDoneGroup(doneGroup *sync.WaitGroup)
 	IsPrintable() bool
 	SetPrintable(printable bool)
+	SetError(err error)
+	PanicWhenError() bool
 }
 
 var _ Job = (*DefaultJob)(nil)
@@ -56,39 +58,15 @@ type DefaultJob struct {
 	done      *sync.WaitGroup
 	doneGroup *sync.WaitGroup
 	printable bool
+	err       error
 }
 
 func (d *DefaultJob) Exec() error {
-	err := d.job.DoExec()
-	if d.done != nil {
-		d.done.Done()
-	}
-	if d.doneGroup != nil {
-		d.doneGroup.Done()
-	}
-	return err
-}
-
-func (d *DefaultJob) MustExec() {
-	if err := d.Exec(); err != nil {
-		panic(err)
-	}
-}
-
-func (d *DefaultJob) WaitDone() {
-	if d.done != nil {
-		d.done.Wait()
-	}
+	return d.job.DoExec()
 }
 
 func (d *DefaultJob) SetDone(done *sync.WaitGroup) {
 	d.done = done
-}
-
-func (d *DefaultJob) WaitDoneGroup() {
-	if d.doneGroup != nil {
-		d.doneGroup.Done()
-	}
 }
 
 func (d *DefaultJob) SetDoneGroup(doneGroup *sync.WaitGroup) {
@@ -113,10 +91,32 @@ func (d *DefaultJob) Wait() {
 	}
 }
 
+func (d *DefaultJob) Done() {
+	if d.done != nil {
+		d.done.Done()
+	}
+}
+
+func (d *DefaultJob) WaitGroup() {
+	if d.doneGroup != nil {
+		d.doneGroup.Wait()
+	}
+}
+
+func (d *DefaultJob) DoneGroup() {
+	if d.doneGroup != nil {
+		d.doneGroup.Done()
+	}
+}
+
 func (d *DefaultJob) Level() Level {
 	return d.level
 }
 
-func (d *DefaultJob) QuitWhenError() bool {
+func (d *DefaultJob) PanicWhenError() bool {
 	return false
+}
+
+func (d *DefaultJob) SetError(err error) {
+	d.err = err
 }
