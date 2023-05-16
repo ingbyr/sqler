@@ -7,7 +7,6 @@ func NewPrintJob(msg string, level Level) Job {
 		msg:     msg,
 		visible: true,
 	})
-	job.SetPrintable(true)
 	job.Done()
 	return job
 }

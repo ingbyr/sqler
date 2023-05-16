@@ -69,7 +69,7 @@ func initSqler(override bool) {
 		if err != nil {
 			panic(err)
 		}
-		sqler = NewSqler(cfg)
+		sqler = NewSqler(cfg, jobPrinter)
 		if err := sqler.loadSchema(); err != nil {
 			panic(err)
 		}

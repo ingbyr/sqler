@@ -9,14 +9,14 @@ import (
 )
 
 type Sqler struct {
-	ctx            context.Context
-	cfg            *pkg.Config
-	dbSize         int
-	dbs            []*sql.DB
-	tableMetas     []*TableMeta
-	columnMeats    []*ColumnMeta
-	sqlJobExecutor *JobExecutor
-	sqlJobPrinter  *JobPrinter
+	ctx         context.Context
+	cfg         *pkg.Config
+	dbSize      int
+	dbs         []*sql.DB
+	tableMetas  []*TableMeta
+	columnMeats []*ColumnMeta
+	jobExecutor *JobExecutor
+	jobPrinter  *JobPrinter
 }
 
 type TableMeta struct {
@@ -30,29 +30,28 @@ type ColumnMeta struct {
 	Type    string
 }
 
-func NewSqler(cfg *pkg.Config) *Sqler {
+func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
 	s := &Sqler{
-		ctx:            context.Background(),
-		cfg:            cfg,
-		dbSize:         len(cfg.DataSources),
-		dbs:            make([]*sql.DB, len(cfg.DataSources)),
-		tableMetas:     make([]*TableMeta, 0, 32),
-		columnMeats:    make([]*ColumnMeta, 0, 128),
-		sqlJobExecutor: NewJobExecutor(len(cfg.DataSources)),
+		ctx:         context.Background(),
+		cfg:         cfg,
+		dbSize:      len(cfg.DataSources),
+		dbs:         make([]*sql.DB, len(cfg.DataSources)),
+		tableMetas:  make([]*TableMeta, 0, 32),
+		columnMeats: make([]*ColumnMeta, 0, 128),
+		jobExecutor: NewJobExecutor(len(cfg.DataSources), printer),
 	}
 
 	// Init db and stmt job chan
-	jobExecutor := NewJobExecutor(s.dbSize)
+	jobExecutor := NewJobExecutor(s.dbSize, printer)
 	jobExecutor.Start()
-	for i := 0; i < s.dbSize; i++ {
-		connJob := NewConnJob(i, s)
-		jobExecutor.Submit(connJob, i)
-		jobPrinter.Print(connJob)
+	for dbID := 0; dbID < s.dbSize; dbID++ {
+		connJob := NewConnJob(dbID, s)
+		jobExecutor.Submit(connJob, dbID)
 	}
 	jobExecutor.Shutdown(true)
 
 	// Start sql job
-	s.sqlJobExecutor.Start()
+	s.jobExecutor.Start()
 	return s
 }
 
@@ -66,9 +65,8 @@ func (s *Sqler) ExecSync(stopWhenError bool, stmts ...string) {
 			jobId++
 			batchWg.Add(1)
 			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId])
-			s.sqlJobExecutor.Submit(job, dbId)
-			s.sqlJobPrinter.Print(job)
-			s.sqlJobExecutor.WaitForNoRemainJob()
+			s.jobExecutor.Submit(job, dbId)
+			s.jobExecutor.WaitForNoRemainJob()
 		}
 	}
 	batchWg.Wait()
@@ -82,10 +80,9 @@ func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
 		for dbId := range s.dbs {
 			jobId++
 			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId])
-			s.sqlJobExecutor.Submit(job, dbId)
-			s.sqlJobPrinter.Print(job)
+			s.jobExecutor.Submit(job, dbId)
 		}
-		s.sqlJobExecutor.WaitForNoRemainJob()
+		s.jobExecutor.WaitForNoRemainJob()
 	}
 }
 

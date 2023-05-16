@@ -8,24 +8,9 @@ import (
 	"sqler/pkg"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 var _ ExecutableJob = (*SqlJob)(nil)
-
-func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB) Job {
-	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
-	execWg := &sync.WaitGroup{}
-	execWg.Add(1)
-	stmt, useVerticalResult := checkStmtOptions(stmt)
-	job := &SqlJob{
-		Stmt:              stmt,
-		DB:                db,
-		Prefix:            prefix,
-		UseVerticalResult: useVerticalResult,
-	}
-	return NewJob(Info, job)
-}
 
 type SqlJob struct {
 	Stmt              string
@@ -37,38 +22,40 @@ type SqlJob struct {
 	*DefaultJob
 }
 
+func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB) Job {
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
+	stmt, useVerticalResult := checkStmtOptions(stmt)
+	job := &SqlJob{
+		Stmt:              stmt,
+		DB:                db,
+		Prefix:            prefix,
+		UseVerticalResult: useVerticalResult,
+	}
+	return NewJob(Info, job)
+}
+
 func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
 	job.DefaultJob = defaultJob
 }
 
 func (job *SqlJob) DoExec() error {
+	job.output.WriteString(job.Prefix)
 	job.SqlRows, job.Err = job.DB.Query(job.Stmt)
-	return job.Err
-}
-
-func (job *SqlJob) Output() []byte {
-	job.Wait()
-
-	// Convert sql rows to string array
-	b := new(bytes.Buffer)
-	b.WriteString(job.Prefix)
 	if job.Err != nil {
-		return job.MsgError(job.Err, b)
+		return job.Err
 	}
+	// Convert sql rows to string array
 	sqlColumns, sqlResultLines, err := convertSqlResults(job.SqlRows)
 	if err != nil {
-		return job.MsgError(err, b)
+		return err
 	}
-
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		b.Write([]byte("OK"))
-		return b.Bytes()
+		job.output.Write([]byte("OK"))
 	}
-
-	job.format(b, sqlColumns, sqlResultLines)
-
-	return b.Bytes()
+	// Format sql results
+	job.format(job.output, sqlColumns, sqlResultLines)
+	return nil
 }
 
 func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {

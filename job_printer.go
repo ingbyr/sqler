@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sync"
 )
 
 const (
@@ -10,8 +11,9 @@ const (
 )
 
 type JobPrinter struct {
-	outputFile *os.File
-	jobs       chan Job
+	f    *os.File
+	jobs chan Job
+	wg   *sync.WaitGroup
 }
 
 func NewJobPrinter() *JobPrinter {
@@ -20,33 +22,20 @@ func NewJobPrinter() *JobPrinter {
 		panic(err)
 	}
 	p := &JobPrinter{
-		outputFile: outputFile,
-		jobs:       make(chan Job, PrintJobCacheSize),
+		f:    outputFile,
+		jobs: make(chan Job, PrintJobCacheSize),
+		wg:   new(sync.WaitGroup),
 	}
 	go p.Execute()
 	return p
 }
 
-func (p *JobPrinter) WriteString(s string) (n int, err error) {
-	return os.Stdout.WriteString(s)
-}
-
-func (p *JobPrinter) Write(b []byte) (n int, err error) {
-	return os.Stdout.Write(b)
-}
-
-func (p *JobPrinter) SaveString(s string) (int, error) {
-	return p.outputFile.WriteString(s)
-}
-
-func (p *JobPrinter) SaveBytes(b []byte) (int, error) {
-	return p.outputFile.Write(b)
-}
-
-func (p *JobPrinter) WaitForPrinted() {
+func (p *JobPrinter) WaitForNoJob() {
+	p.wg.Wait()
 }
 
 func (p *JobPrinter) Print(job Job) {
+	p.wg.Add(1)
 	p.jobs <- job
 }
 
@@ -66,24 +55,47 @@ func (p *JobPrinter) Execute() {
 	for {
 		select {
 		case job := <-p.jobs:
+			if !job.IsPrintable() {
+				p.wg.Done()
+				continue
+			}
 			job.Wait()
 			levelString := job.Level().String()
-			if job.IsPrintable() {
-				p.WriteString(levelString)
-			}
-			p.SaveString(levelString)
+			p.writeStringToStdout(levelString)
+			p.writeStringToFile(levelString)
 			msg := job.Output()
-			if job.IsPrintable() {
-				p.Write(msg)
-			}
-			p.SaveBytes(msg)
-			if job.IsPrintable() {
-				p.Write([]byte("\n"))
-			}
-			p.SaveBytes([]byte("\n"))
-			if job.PanicWhenError() {
-				os.Exit(1)
-			}
+			p.writeBytesToStdout(msg)
+			p.writeBytesToFile(msg)
+			p.writeBytesToStdout([]byte("\n"))
+			p.writeBytesToFile([]byte("\n"))
+			p.wg.Done()
 		}
+	}
+}
+
+func (p *JobPrinter) writeStringToStdout(s string) {
+	n, err := os.Stdout.WriteString(s)
+	mustNoIoError(n, err)
+}
+
+func (p *JobPrinter) writeBytesToStdout(b []byte) {
+	n, err := os.Stdout.Write(b)
+	mustNoIoError(n, err)
+}
+
+func (p *JobPrinter) writeStringToFile(s string) {
+	n, err := p.f.WriteString(s)
+	mustNoIoError(n, err)
+}
+
+func (p *JobPrinter) writeBytesToFile(b []byte) {
+	n, err := p.f.Write(b)
+	mustNoIoError(n, err)
+}
+
+func mustNoIoError(n int, err error) {
+	if err != nil {
+		err := fmt.Errorf("n %d, err %v", n, err)
+		panic(err)
 	}
 }
