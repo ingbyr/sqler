@@ -105,15 +105,6 @@ func (s *Sqler) totalStmtSize(stmtSize int) int {
 	return s.dbSize * stmtSize
 }
 
-func (s *Sqler) shouldStop(jobs []*SqlJob) bool {
-	for _, job := range jobs {
-		if job.Err != nil {
-			return true
-		}
-	}
-	return false
-}
-
 func (s *Sqler) loadSchema() error {
 	db0 := s.dbs[0]
 	schema := s.cfg.DataSources[0].Schema

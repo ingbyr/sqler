@@ -72,9 +72,6 @@ func handleJob(ctx context.Context, jobChan chan Job, wg *sync.WaitGroup) {
 			err := job.Exec()
 			if err != nil {
 				job.SetError(err)
-				if job.PanicWhenError() {
-					panic(err)
-				}
 			}
 			job.Done()
 			wg.Done()

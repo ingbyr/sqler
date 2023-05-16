@@ -34,11 +34,12 @@ type Job interface {
 	IsPrintable() bool
 	SetPrintable(printable bool)
 	SetError(err error)
+	Error() error
 	PanicWhenError() bool
 }
 
 var _ Job = (*DefaultJob)(nil)
-var _ Job = (*PrintJob)(nil)
+var _ Job = (*StrJob)(nil)
 
 type DefaultJob struct {
 	job       ExecutableJob
@@ -91,4 +92,8 @@ func (d *DefaultJob) PanicWhenError() bool {
 
 func (d *DefaultJob) SetError(err error) {
 	d.err = err
+}
+
+func (d *DefaultJob) Error() error {
+	return d.err
 }

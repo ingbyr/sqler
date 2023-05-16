@@ -40,42 +40,61 @@ func (p *JobPrinter) Print(job Job) {
 }
 
 func (p *JobPrinter) PrintInfo(msg string) {
-	p.Print(NewSimplePrintJob(msg, Info))
+	p.Print(NewStrJob(msg, Info))
 }
 
 func (p *JobPrinter) LogInfo(msg string) {
-	job := NewSimplePrintJob(msg, Info)
+	job := NewStrJob(msg, Info)
 
 	p.Print(job)
 }
 
 func (p *JobPrinter) PrintError(msg string, err error) {
-	p.Print(NewSimplePrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
+	p.Print(NewStrJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
 }
 
 func (p *JobPrinter) Execute() {
 	for {
 		select {
 		case job := <-p.jobs:
+			// Skip no output job
 			if !job.IsPrintable() {
 				p.wg.Done()
 				continue
 			}
+			// Wait for done
 			job.Wait()
+			// Print output
 			level := job.Level()
 			if level != Info {
-				levelStr := level.String()
-				p.writeStringToStdout(levelStr)
-				p.writeStringToFile(levelStr)
+				p.writeString(level.String())
 			}
 			msg := job.Output()
-			p.writeBytesToStdout(msg)
-			p.writeBytesToFile(msg)
-			p.writeBytesToStdout([]byte("\n"))
-			p.writeBytesToFile([]byte("\n"))
+			p.writeBytes(msg)
+			// Check job error
+			if job.Error() != nil {
+				p.writeString(Error.String())
+				p.writeString(job.Error().Error())
+				p.writeBytes([]byte("\n"))
+				if job.PanicWhenError() {
+					panic(job.Error())
+				}
+			}
+			p.writeBytes([]byte("\n"))
+			// Mark print job done
 			p.wg.Done()
 		}
 	}
+}
+
+func (p *JobPrinter) writeString(s string) {
+	p.writeStringToStdout(s)
+	p.writeStringToFile(s)
+}
+
+func (p *JobPrinter) writeBytes(b []byte) {
+	p.writeBytesToStdout(b)
+	p.writeBytesToFile(b)
 }
 
 func (p *JobPrinter) writeStringToStdout(s string) {

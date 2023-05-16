@@ -18,7 +18,6 @@ type SqlJob struct {
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
-	Err               error
 	*DefaultJob
 }
 
@@ -40,9 +39,10 @@ func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
 
 func (job *SqlJob) DoExec() error {
 	job.output.WriteString(job.Prefix)
-	job.SqlRows, job.Err = job.DB.Query(job.Stmt)
-	if job.Err != nil {
-		return job.Err
+	var err error
+	job.SqlRows, err = job.DB.Query(job.Stmt)
+	if err != nil {
+		return err
 	}
 	// Convert sql rows to string array
 	sqlColumns, sqlResultLines, err := convertSqlResults(job.SqlRows)
@@ -54,7 +54,7 @@ func (job *SqlJob) DoExec() error {
 		job.output.Write([]byte("OK"))
 	}
 	// Format sql results
-	job.format(job.output, sqlColumns, sqlResultLines)
+	job.writeFormatOutput(job.output, sqlColumns, sqlResultLines)
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
 	return b.Bytes()
 }
 
-func (job *SqlJob) format(b *bytes.Buffer, headers []string, columns [][]string) {
+func (job *SqlJob) writeFormatOutput(b *bytes.Buffer, headers []string, columns [][]string) {
 	// Format as lines
 	if job.UseVerticalResult {
 		maxLen := 0
