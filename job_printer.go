@@ -40,15 +40,17 @@ func (p *JobPrinter) Print(job Job) {
 }
 
 func (p *JobPrinter) PrintInfo(msg string) {
-	p.Print(NewPrintJob(msg, Info))
+	p.Print(NewSimplePrintJob(msg, Info))
 }
 
 func (p *JobPrinter) LogInfo(msg string) {
-	p.Print(NewPrintJob(msg, Info))
+	job := NewSimplePrintJob(msg, Info)
+
+	p.Print(job)
 }
 
 func (p *JobPrinter) PrintError(msg string, err error) {
-	p.Print(NewPrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
+	p.Print(NewSimplePrintJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
 }
 
 func (p *JobPrinter) Execute() {
@@ -60,9 +62,12 @@ func (p *JobPrinter) Execute() {
 				continue
 			}
 			job.Wait()
-			levelString := job.Level().String()
-			p.writeStringToStdout(levelString)
-			p.writeStringToFile(levelString)
+			level := job.Level()
+			if level != Info {
+				levelStr := level.String()
+				p.writeStringToStdout(levelStr)
+				p.writeStringToFile(levelStr)
+			}
 			msg := job.Output()
 			p.writeBytesToStdout(msg)
 			p.writeBytesToFile(msg)

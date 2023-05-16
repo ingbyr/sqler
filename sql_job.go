@@ -31,7 +31,7 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
 	}
-	return NewJob(Info, job)
+	return WrapJob(Info, job)
 }
 
 func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {

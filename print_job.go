@@ -2,13 +2,25 @@ package main
 
 var _ ExecutableJob = (*PrintJob)(nil)
 
-func NewPrintJob(msg string, level Level) Job {
-	job := NewJob(level, &PrintJob{
-		msg:     msg,
-		visible: true,
-	})
+func NewSimplePrintJob(msg string, level Level) Job {
+	printJob := newPrintJob(msg)
+	job := WrapJob(level, printJob)
 	job.Done()
 	return job
+}
+
+func NewNoOutputPrintJob(msg string, level Level) Job {
+	printJob := newPrintJob(msg)
+	printJob.visible = false
+	return WrapJob(level, printJob)
+}
+
+func newPrintJob(msg string) *PrintJob {
+	return &PrintJob{
+		msg:        msg,
+		visible:    true,
+		DefaultJob: nil,
+	}
 }
 
 type PrintJob struct {

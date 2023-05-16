@@ -77,7 +77,6 @@ func handleJob(ctx context.Context, jobChan chan Job, wg *sync.WaitGroup) {
 				}
 			}
 			job.Done()
-			job.DoneGroup()
 			wg.Done()
 		}
 	}
