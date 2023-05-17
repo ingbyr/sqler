@@ -30,7 +30,7 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
 	}
-	return WrapJob(Info, job)
+	return WrapJob(job)
 }
 
 func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
@@ -54,7 +54,7 @@ func (job *SqlJob) DoExec() error {
 		job.output.Write([]byte("OK"))
 	}
 	// Format sql results
-	job.writeFormatOutput(job.output, sqlColumns, sqlResultLines)
+	job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
 	return b.Bytes()
 }
 
-func (job *SqlJob) writeFormatOutput(b *bytes.Buffer, headers []string, columns [][]string) {
+func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns [][]string) {
 	// Format as lines
 	if job.UseVerticalResult {
 		maxLen := 0

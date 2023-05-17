@@ -5,7 +5,11 @@ import (
 	"sync"
 )
 
-func WrapJob(level Level, job ExecutableJob) *DefaultJob {
+func WrapJob(job ExecutableJob) *DefaultJob {
+	return WrapJobWithLevel(job, Info)
+}
+
+func WrapJobWithLevel(job ExecutableJob, level Level) *DefaultJob {
 	done := new(sync.WaitGroup)
 	done.Add(1)
 	defaultJob := &DefaultJob{

@@ -4,7 +4,7 @@ var _ ExecutableJob = (*StrJob)(nil)
 
 func NewStrJob(msg string, level Level) Job {
 	printJob := newStrJob(msg)
-	job := WrapJob(level, printJob)
+	job := WrapJobWithLevel(printJob, level)
 	job.Done()
 	return job
 }
@@ -12,7 +12,7 @@ func NewStrJob(msg string, level Level) Job {
 func NewNoOutputStrJob(msg string, level Level) Job {
 	printJob := newStrJob(msg)
 	printJob.visible = false
-	return WrapJob(level, printJob)
+	return WrapJobWithLevel(printJob, level)
 }
 
 func newStrJob(msg string) *StrJob {

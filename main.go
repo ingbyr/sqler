@@ -157,7 +157,7 @@ func executor(line string) {
 	}
 
 	// Clear sql cache
-	if pkg.CmdClear == line {
+	if strings.HasPrefix(line, pkg.CmdClear) {
 		sqlStmtCache = new(strings.Builder)
 		return
 	}
@@ -171,6 +171,20 @@ func executor(line string) {
 		}
 		configFile = configFiles[0]
 		initSqler(true)
+		return
+	}
+
+	if strings.HasPrefix(line, pkg.CmdCount) {
+		schemas := strings.Split(line, " ")[1:]
+		if len(schemas) == 0 {
+			// TODO Count schema in config file
+			return
+		}
+		countJob := NewCountJob(sqler, schemas)
+		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor.Start()
+		jobExecutor.Submit(countJob, 0)
+		jobExecutor.Shutdown(true)
 		return
 	}
 

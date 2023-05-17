@@ -18,7 +18,7 @@ func NewConnJob(idx int, sqler *Sqler) Job {
 		Idx:   idx,
 		sqler: sqler,
 	}
-	return WrapJob(Info, connJob)
+	return WrapJob(connJob)
 }
 
 func (job *ConnJob) SetWrapper(defaultJob *DefaultJob) {

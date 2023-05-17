@@ -22,6 +22,10 @@ type DataSourceConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 }
 
+func (ds *DataSourceConfig) DsKey() string {
+	return ds.Url + "/" + ds.Schema
+}
+
 func NewConfig() *Config {
 	return &Config{
 		DataSourceArgs: DefaultDataSourceArgs,
@@ -43,4 +47,12 @@ func LoadConfigFromFile(configFile string) (*Config, error) {
 
 func (cfg *Config) AddDataSource(ds *DataSourceConfig) {
 	cfg.DataSources = append(cfg.DataSources, ds)
+}
+
+func (cfg *Config) DsKeys() []string {
+	dsKeys := make([]string, 0, len(cfg.DataSources))
+	for i := range cfg.DataSources {
+		dsKeys = append(dsKeys, cfg.DataSources[i].DsKey())
+	}
+	return dsKeys
 }

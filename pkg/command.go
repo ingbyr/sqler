@@ -5,6 +5,7 @@ const (
 	CmdDatasource = "/datasource"
 	CmdClear      = "/clear"
 	CmdActive     = "/active"
+	CmdCount      = "/count"
 )
 
 func CommandSuggests() [][]string {
@@ -13,5 +14,6 @@ func CommandSuggests() [][]string {
 		{CmdSource, "Source sql files"},
 		{CmdClear, "Clear sql"},
 		{CmdActive, "Active config file"},
+		{CmdCount, "Count data in schema"},
 	}
 }
