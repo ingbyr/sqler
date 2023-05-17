@@ -45,7 +45,7 @@ func (p *JobPrinter) PrintInfo(msg string) {
 
 func (p *JobPrinter) LogInfo(msg string) {
 	job := NewStrJob(msg, Info)
-
+	job.SetPrintable(false)
 	p.Print(job)
 }
 
@@ -57,43 +57,43 @@ func (p *JobPrinter) Execute() {
 	for {
 		select {
 		case job := <-p.jobs:
-			// Skip no output job
-			if !job.IsPrintable() {
-				p.wg.Done()
-				continue
-			}
 			// Wait for done
 			job.Wait()
 			// Print output
+			toStdOut := job.IsPrintable()
 			level := job.Level()
 			if level != Info {
-				p.writeString(level.String())
+				p.writeString(level.String(), toStdOut)
 			}
 			msg := job.Output()
-			p.writeBytes(msg)
+			p.writeBytes(msg, toStdOut)
 			// Check job error
 			if job.Error() != nil {
-				p.writeString(Error.String())
-				p.writeString(job.Error().Error())
-				p.writeBytes([]byte("\n"))
+				p.writeString(Error.String(), toStdOut)
+				p.writeString(job.Error().Error(), toStdOut)
+				p.writeBytes([]byte("\n"), toStdOut)
 				if job.PanicWhenError() {
 					panic(job.Error())
 				}
 			}
-			p.writeBytes([]byte("\n"))
+			p.writeBytes([]byte("\n"), toStdOut)
 			// Mark print job done
 			p.wg.Done()
 		}
 	}
 }
 
-func (p *JobPrinter) writeString(s string) {
-	p.writeStringToStdout(s)
+func (p *JobPrinter) writeString(s string, toStdout bool) {
+	if toStdout {
+		p.writeStringToStdout(s)
+	}
 	p.writeStringToFile(s)
 }
 
-func (p *JobPrinter) writeBytes(b []byte) {
-	p.writeBytesToStdout(b)
+func (p *JobPrinter) writeBytes(b []byte, toStdOut bool) {
+	if toStdOut {
+		p.writeBytesToStdout(b)
+	}
 	p.writeBytesToFile(b)
 }
 
