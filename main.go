@@ -108,7 +108,7 @@ func cli() {
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				jobPrinter.LogInfo(fmt.Sprintf("%s %s", currentPrefix(), document.Text))
+				jobPrinter.LogInfo(currentPrefix() + document.Text)
 			}),
 		)
 		p.Run()
