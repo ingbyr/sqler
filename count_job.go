@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/olekukonko/tablewriter"
-	"sqler/pkg"
 )
 
 var _ ExecutableJob = (*CountJob)(nil)
@@ -63,8 +62,4 @@ func (c *CountJob) DoExec() error {
 
 func (c *CountJob) SetWrapper(defaultJob *DefaultJob) {
 	c.DefaultJob = defaultJob
-}
-
-func dsKey(config *pkg.DataSourceConfig) string {
-	return config.Url + "/" + config.Schema
 }

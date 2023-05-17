@@ -22,18 +22,28 @@ func main() {
 		printInfo()
 		os.Exit(1)
 	}
-	ssCfgFileName := args[1]
-	cfgFileName := args[2]
-	ssCfgFile, err := os.ReadFile(ssCfgFileName)
-	panicIfError(err)
-	ssCfg := new(ShardingSphereConfig)
-	err = yaml.Unmarshal(ssCfgFile, ssCfg)
-	if err != nil {
-		panic(err)
-	}
+	sourceCfgFileName := args[1]
+	targetFileName := args[2]
 
+	ssCfg := loadSsCfg(sourceCfgFileName)
+	cfg := transToCfg(ssCfg)
+
+	cfgBytes, err := yaml.Marshal(cfg)
+	panicIfError(err)
+	err = os.WriteFile(targetFileName, cfgBytes, 0775)
+	panicIfError(err)
+
+	fmt.Println("Generated file", targetFileName)
+}
+
+func transToCfg(ssCfg *ShardingSphereConfig) *pkg.Config {
 	cfg := pkg.NewConfig()
-	dataSources := ssCfg.DataSources.Content
+	transDataSourcesConfig(cfg, ssCfg.DataSources.Content)
+	transCountConfig(cfg, ssCfg.Rules.Content)
+	return cfg
+}
+
+func transDataSourcesConfig(cfg *pkg.Config, dataSources []*yaml.Node) {
 	for i := 0; i < len(dataSources); i += 2 {
 		//dsKey := dataSources[i]
 		dsContent := dataSources[i+1]
@@ -51,21 +61,43 @@ func main() {
 			Enabled:  true,
 		})
 	}
-	out, err := yaml.Marshal(cfg)
+}
+
+func transCountConfig(cfg *pkg.Config, rules []*yaml.Node) {
+	for _, rule := range rules {
+		if rule.Tag == "!SHARDING" {
+			for i, sharding := range rule.Content {
+				if sharding.Value == "broadcastTables" {
+					schemas := rule.Content[i+1]
+					for _, schema := range schemas.Content {
+						cfg.CommandsConfig.AddCountSchema(schema.Value)
+					}
+					return
+				}
+			}
+		}
+	}
+}
+
+func loadSsCfg(ssCfgFileName string) *ShardingSphereConfig {
+	ssCfgFile, err := os.ReadFile(ssCfgFileName)
 	panicIfError(err)
-	err = os.WriteFile(cfgFileName, out, 0775)
+	ssCfg := new(ShardingSphereConfig)
+	err = yaml.Unmarshal(ssCfgFile, ssCfg)
 	panicIfError(err)
-	fmt.Println("Generated file", cfgFileName)
+	return ssCfg
 }
 
 type ShardingSphereConfig struct {
 	//DataSources map[string]map[string]string `yaml:"dataSources"`
+	FileName    string    `yaml:"-"`
 	DataSources yaml.Node `yaml:"dataSources"`
+	Rules       yaml.Node `yaml:"rules"`
 }
 
 func parseJdbcUrl(jdbcUrl string) (string, string) {
-	regstr := `\d+\.\d+\.\d+\.\d+:\d+/.+\?`
-	reg, _ := regexp.Compile(regstr)
+	pattern := `\d+\.\d+\.\d+\.\d+:\d+/.+\?`
+	reg, _ := regexp.Compile(pattern)
 	res := reg.FindString(jdbcUrl)
 	split := strings.Split(res, "/")
 	return split[0], split[1][:len(split[1])-1]

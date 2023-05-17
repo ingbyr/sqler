@@ -7,29 +7,11 @@ import (
 
 const DefaultDataSourceArgs = "collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true"
 
-type Config struct {
-	FileName       string              `yaml:"-"`
-	DataSourceArgs string              `yaml:"dataSourceArgs"`
-	DataSources    []*DataSourceConfig `yaml:"dataSources"`
-}
-
-type DataSourceConfig struct {
-	Type     string `yaml:"type"`
-	Url      string `yaml:"url"`
-	Schema   string `yaml:"schema"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Enabled  bool   `yaml:"enabled"`
-}
-
-func (ds *DataSourceConfig) DsKey() string {
-	return ds.Url + "/" + ds.Schema
-}
-
 func NewConfig() *Config {
 	return &Config{
 		DataSourceArgs: DefaultDataSourceArgs,
 		DataSources:    make([]*DataSourceConfig, 0),
+		CommandsConfig: &CommandsConfig{CountSchemas: make([]string, 0)},
 	}
 }
 
@@ -45,14 +27,34 @@ func LoadConfigFromFile(configFile string) (*Config, error) {
 	return cfg, nil
 }
 
+type Config struct {
+	FileName       string              `yaml:"-"`
+	DataSourceArgs string              `yaml:"dataSourceArgs"`
+	DataSources    []*DataSourceConfig `yaml:"dataSources"`
+	CommandsConfig *CommandsConfig     `yaml:"commands"`
+}
+
 func (cfg *Config) AddDataSource(ds *DataSourceConfig) {
 	cfg.DataSources = append(cfg.DataSources, ds)
 }
 
-func (cfg *Config) DsKeys() []string {
-	dsKeys := make([]string, 0, len(cfg.DataSources))
-	for i := range cfg.DataSources {
-		dsKeys = append(dsKeys, cfg.DataSources[i].DsKey())
-	}
-	return dsKeys
+type DataSourceConfig struct {
+	Type     string `yaml:"type"`
+	Url      string `yaml:"url"`
+	Schema   string `yaml:"schema"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Enabled  bool   `yaml:"enabled"`
+}
+
+func (ds *DataSourceConfig) DsKey() string {
+	return ds.Url + "/" + ds.Schema
+}
+
+type CommandsConfig struct {
+	CountSchemas []string `yaml:"count-schemas"`
+}
+
+func (c *CommandsConfig) AddCountSchema(schema string) {
+	c.CountSchemas = append(c.CountSchemas, schema)
 }

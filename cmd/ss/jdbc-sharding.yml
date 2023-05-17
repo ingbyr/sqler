@@ -29,3 +29,18 @@ dataSources:
     minimumIdle: 10
     username: root
     password: root
+
+props:
+  max-connections-size-per-query: 1
+  sql-show: true
+
+license: DEMO-LICENSE
+
+rules:
+  - !TRANSACTION
+    defaultType: XA
+    providerType: Narayana
+  - !SHARDING
+    broadcastTables:
+      - t1
+      - t2
