@@ -3,3 +3,4 @@ bin/
 tmp*
 *.log
 cmd/ss/config.yml
+*.csv
