@@ -2,8 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"encoding/csv"
 	"errors"
 	"github.com/olekukonko/tablewriter"
+	"os"
 	"sqler/pkg"
 	"sync"
 )
@@ -68,21 +70,41 @@ func (c *CountJob) DoExec() error {
 
 	// Write output
 	table := tablewriter.NewWriter(c.output)
+
+	// Csv
+	file, err := os.OpenFile("count.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		panic(err)
+	}
+	csvWriter := csv.NewWriter(file)
+
 	header := make([]string, 0, len(c.schemas)+1)
 	header = append(header, "DataSource")
 	for _, schema := range c.schemas {
 		header = append(header, schema)
 	}
+	// Table header
 	table.SetHeader(header)
+	// Csv header
+	if err := csvWriter.Write(header); err != nil {
+		return err
+	}
+
 	for _, ds := range sqler.cfg.DataSources {
 		tableRow := make([]string, 0, len(c.schemas)+1)
 		tableRow = append(tableRow, ds.DsKey())
 		for _, schema := range c.schemas {
 			tableRow = append(tableRow, schemaDsCountMap[schema][ds.DsKey()])
 		}
+		// Table content
 		table.Append(tableRow)
+		// Csv content
+		if err := csvWriter.Write(tableRow); err != nil {
+			return err
+		}
 	}
 	table.Render()
+	csvWriter.Flush()
 	return nil
 }
 
