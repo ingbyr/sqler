@@ -43,12 +43,14 @@ func (c *CountJob) DoExec() error {
 					errsMu.Lock()
 					errs = append(errs, err)
 					errsMu.Unlock()
+					continue
 				}
 				_, rows, err := convertSqlResults(results)
 				if err != nil {
 					errsMu.Lock()
 					errs = append(errs, err)
 					errsMu.Unlock()
+					continue
 				}
 				mapMu.Lock()
 				schemaDsCountMap[schema][ds.DsKey()] = rows[0][0]
