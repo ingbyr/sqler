@@ -21,4 +21,5 @@ dataSources:
 commands:
   count-schemas:
     - t1
+    - foo
     - t2

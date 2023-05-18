@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 )
 
 func NewJobExecutor(jobGroupSize int, printer *JobPrinter) *JobExecutor {
@@ -33,11 +34,12 @@ type JobExecutor struct {
 	cancel     context.CancelFunc
 	printer    *JobPrinter
 	totalJobWg *sync.WaitGroup
+	hasError   atomic.Bool
 }
 
 func (e *JobExecutor) Start() {
 	for i := 0; i < len(e.jobGroup); i++ {
-		go handleJob(e.ctx, e.jobGroup[i], e.totalJobWg)
+		go e.handleJob(e.jobGroup[i])
 	}
 }
 
@@ -63,18 +65,25 @@ func (e *JobExecutor) Shutdown(wait bool) {
 	e.WaitForNoRemainJob()
 }
 
-func handleJob(ctx context.Context, jobChan chan Job, wg *sync.WaitGroup) {
+// HasAnyError will be reset to false when invoked
+func (e *JobExecutor) HasAnyError() bool {
+	defer e.hasError.Store(false)
+	return e.hasError.Load()
+}
+
+func (e *JobExecutor) handleJob(jobChan chan Job) {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-e.ctx.Done():
 			return
 		case job := <-jobChan:
 			err := job.Exec()
 			if err != nil {
 				job.SetError(err)
+				e.hasError.Store(true)
 			}
 			job.Done()
-			wg.Done()
+			e.totalJobWg.Done()
 		}
 	}
 }

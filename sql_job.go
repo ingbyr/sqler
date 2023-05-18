@@ -51,10 +51,12 @@ func (job *SqlJob) DoExec() error {
 	}
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		job.output.Write([]byte("OK"))
+		job.output.Write([]byte("OK\n"))
 	}
 	// Format sql results
-	job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
+	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
+		job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
+	}
 	return nil
 }
 

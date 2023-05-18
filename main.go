@@ -23,8 +23,6 @@ var (
 	flagConfig      string
 	flagSqlFile     string
 	flagInteractive bool
-	flagParallel    bool
-	flagParallel0   bool
 	flagVersion     bool
 	configFile      string
 )
@@ -39,8 +37,6 @@ func parseFlags() {
 	flag.StringVar(&flagConfig, "c", "config.yml", "(config) 配置文件")
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
-	flag.BoolVar(&flagParallel, "p", true, "(parallel) 并行执行模式")
-	flag.BoolVar(&flagParallel0, "p0", false, "(parallel0) 完全并行执行模式")
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.Parse()
 	configFile = flagConfig
@@ -204,11 +200,7 @@ func sourceSqlFiles(files []string) {
 }
 
 func execSql(stopWhenError bool, sqlStmt ...string) {
-	if flagParallel0 {
-		sqler.ExecPara0(sqlStmt...)
-	} else if flagParallel {
-		sqler.ExecPara(stopWhenError, sqlStmt...)
-	}
+	sqler.ExecPara(stopWhenError, sqlStmt...)
 }
 
 func main() {

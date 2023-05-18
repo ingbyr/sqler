@@ -81,22 +81,10 @@ func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
 			s.jobExecutor.Submit(job, dbId)
 		}
 		s.jobExecutor.WaitForNoRemainJob()
+		if stopWhenError && s.jobExecutor.HasAnyError() {
+			return
+		}
 	}
-}
-
-func (s *Sqler) ExecPara0(stmts ...string) {
-	//jobSize := s.totalStmtSize(len(stmts))
-	//jobId := 1
-	//batchWg := &sync.WaitGroup{}
-	//for _, stmt := range stmts {
-	//	jobs := make([]*SqlJob, s.dbSize)
-	//	for dbId := range s.dbs {
-	//		batchWg.Add(1)
-	//		jobs[dbId] = s.Exec(stmt, dbId, jobId, jobSize)
-	//		jobId++
-	//	}
-	//}
-	//batchWg.Wait()
 }
 
 func (s *Sqler) totalStmtSize(stmtSize int) int {

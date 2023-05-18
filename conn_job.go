@@ -25,7 +25,7 @@ func (job *ConnJob) SetWrapper(defaultJob *DefaultJob) {
 	job.DefaultJob = defaultJob
 }
 
-func (job *ConnJob) PanicWhenError() bool {
+func (job *ConnJob) StopOtherJobsWhenError() bool {
 	return true
 }
 

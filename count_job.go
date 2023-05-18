@@ -59,7 +59,9 @@ func (c *CountJob) DoExec() error {
 			wg.Done()
 		}(dbID, db, sqler.cfg.DataSources[dbID])
 	}
+
 	wg.Wait()
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}

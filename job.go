@@ -39,7 +39,7 @@ type Job interface {
 	SetPrintable(printable bool)
 	SetError(err error)
 	Error() error
-	PanicWhenError() bool
+	StopOtherJobsWhenError() bool
 }
 
 var _ Job = (*DefaultJob)(nil)
@@ -90,7 +90,7 @@ func (d *DefaultJob) Level() Level {
 	return d.level
 }
 
-func (d *DefaultJob) PanicWhenError() bool {
+func (d *DefaultJob) StopOtherJobsWhenError() bool {
 	return false
 }
 

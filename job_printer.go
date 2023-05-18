@@ -30,90 +30,93 @@ func NewJobPrinter() *JobPrinter {
 	return p
 }
 
-func (p *JobPrinter) WaitForNoJob() {
-	p.wg.Wait()
+func (printer *JobPrinter) WaitForNoJob() {
+	printer.wg.Wait()
 }
 
-func (p *JobPrinter) Print(job Job) {
-	p.wg.Add(1)
-	p.jobs <- job
+func (printer *JobPrinter) Print(job Job) {
+	printer.wg.Add(1)
+	printer.jobs <- job
 }
 
-func (p *JobPrinter) PrintInfo(msg string) {
-	p.Print(NewStrJob(msg, Info))
+func (printer *JobPrinter) PrintInfo(msg string) {
+	printer.Print(NewStrJob(msg, Info))
 }
 
-func (p *JobPrinter) LogInfo(msg string) {
+func (printer *JobPrinter) LogInfo(msg string) {
 	job := NewStrJob(msg, Info)
 	job.SetPrintable(false)
-	p.Print(job)
+	printer.Print(job)
 }
 
-func (p *JobPrinter) PrintError(msg string, err error) {
-	p.Print(NewStrJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
+func (printer *JobPrinter) PrintError(msg string, err error) {
+	printer.Print(NewStrJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
 }
 
-func (p *JobPrinter) Execute() {
+func (printer *JobPrinter) Execute() {
 	for {
 		select {
-		case job := <-p.jobs:
+		case job := <-printer.jobs:
 			// Wait for done
 			job.Wait()
-			// Print output
-			toStdOut := job.IsPrintable()
-			level := job.Level()
-			if level != Info {
-				p.writeString(level.String(), toStdOut)
-			}
 			msg := job.Output()
-			p.writeBytes(msg, toStdOut)
-			// Check job error
-			if job.Error() != nil {
-				p.writeString(Error.String(), toStdOut)
-				p.writeString(job.Error().Error(), toStdOut)
-				p.writeBytes([]byte("\n"), toStdOut)
-				if job.PanicWhenError() {
-					panic(job.Error())
-				}
+			err := job.Error()
+			level := job.Level()
+			toStdOut := job.IsPrintable()
+			if err != nil {
+				level = Error
 			}
-			p.writeBytes([]byte("\n"), toStdOut)
+			if level != Info && len(msg) != 0 {
+				printer.writeString(level.String(), toStdOut)
+				printer.writeBytes([]byte(" "), toStdOut)
+				printer.writeBytes(msg, toStdOut)
+			} else {
+				printer.writeBytes(msg, toStdOut)
+			}
+			if err != nil {
+				printer.writeString(Error.String(), true)
+				printer.writeBytes([]byte(" "), toStdOut)
+				printer.writeString(err.Error(), true)
+				printer.writeBytes([]byte("\n"), true)
+			}
+			printer.writeBytes([]byte("\n"), toStdOut)
 			// Mark print job done
-			p.wg.Done()
+			printer.wg.Done()
 		}
 	}
 }
 
-func (p *JobPrinter) writeString(s string, toStdout bool) {
+func (printer *JobPrinter) writeString(s string, toStdout bool) {
 	if toStdout {
-		p.writeStringToStdout(s)
+		printer.writeStringToStdout(s)
 	}
-	p.writeStringToFile(s)
+	printer.writeStringToFile(s)
 }
 
-func (p *JobPrinter) writeBytes(b []byte, toStdOut bool) {
+func (printer *JobPrinter) writeBytes(b []byte, toStdOut bool) {
 	if toStdOut {
-		p.writeBytesToStdout(b)
+		printer.writeBytesToStdout(b)
 	}
-	p.writeBytesToFile(b)
+	printer.writeBytesToFile(b)
 }
 
-func (p *JobPrinter) writeStringToStdout(s string) {
+func (printer *JobPrinter) writeStringToStdout(s string) {
 	n, err := os.Stdout.WriteString(s)
 	mustNoIoError(n, err)
 }
 
-func (p *JobPrinter) writeBytesToStdout(b []byte) {
+func (printer *JobPrinter) writeBytesToStdout(b []byte) {
 	n, err := os.Stdout.Write(b)
 	mustNoIoError(n, err)
 }
 
-func (p *JobPrinter) writeStringToFile(s string) {
-	n, err := p.f.WriteString(s)
+func (printer *JobPrinter) writeStringToFile(s string) {
+	n, err := printer.f.WriteString(s)
 	mustNoIoError(n, err)
 }
 
-func (p *JobPrinter) writeBytesToFile(b []byte) {
-	n, err := p.f.Write(b)
+func (printer *JobPrinter) writeBytesToFile(b []byte) {
+	n, err := printer.f.Write(b)
 	mustNoIoError(n, err)
 }
 
