@@ -11,7 +11,6 @@ import (
 type Sqler struct {
 	ctx         context.Context
 	cfg         *pkg.Config
-	dbSize      int
 	dbs         []*sql.DB
 	tableMetas  []*TableMeta
 	columnMeats []*ColumnMeta
@@ -34,7 +33,6 @@ func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
 	s := &Sqler{
 		ctx:         context.Background(),
 		cfg:         cfg,
-		dbSize:      len(cfg.DataSources),
 		dbs:         make([]*sql.DB, len(cfg.DataSources)),
 		tableMetas:  make([]*TableMeta, 0, 32),
 		columnMeats: make([]*ColumnMeta, 0, 128),
@@ -42,9 +40,9 @@ func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
 	}
 
 	// Init db and stmt job chan
-	jobExecutor := NewJobExecutor(s.dbSize, printer)
+	jobExecutor := NewJobExecutor(len(s.dbs), printer)
 	jobExecutor.Start()
-	for dbID := 0; dbID < s.dbSize; dbID++ {
+	for dbID := 0; dbID < len(s.dbs); dbID++ {
 		connJob := NewConnJob(dbID, s)
 		jobExecutor.Submit(connJob, dbID)
 	}
@@ -102,7 +100,7 @@ func (s *Sqler) ExecPara0(stmts ...string) {
 }
 
 func (s *Sqler) totalStmtSize(stmtSize int) int {
-	return s.dbSize * stmtSize
+	return len(s.dbs) * stmtSize
 }
 
 func (s *Sqler) loadSchema() error {
