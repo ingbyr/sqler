@@ -11,5 +11,5 @@ func TestLoadSqlFile(t *testing.T) {
 	sqlFile, err := os.Open("tmp.sql")
 	as.NoError(err)
 	stmts := LoadStmtsFromFile(sqlFile)
-	as.Equal(4, len(stmts))
+	as.Equal(5, len(stmts))
 }

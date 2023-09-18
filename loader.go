@@ -20,31 +20,22 @@ func LoadSqlFile(sqlFilePath string) []string {
 
 func LoadStmtsFromFile(sqlFile *os.File) []string {
 	scanner := bufio.NewScanner(sqlFile)
-	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		if atEOF && len(data) == 0 {
-			return 0, nil, nil
-		}
-		//if i := bytes.IndexAny(data, ";\n"); i >= 0 {
-		//	return i + 1, data[0:i], nil
-		//}
-		if i := strings.Index(string(data), ";\n"); i >= 0 {
-			return i + 1, data[0:i], nil
-		}
-		if i := strings.Index(string(data), ";\r\n"); i >= 0 {
-			return i + 1, data[0:i], nil
-		}
-		if atEOF {
-			return len(data), data, nil
-		}
-		return 0, nil, nil
-	})
 	stmts := make([]string, 0)
+	var builder strings.Builder
 	for scanner.Scan() {
-		stmt := strings.Replace(scanner.Text(), "\r\n", " ", -1)
-		stmt = strings.Replace(stmt, "\n", " ", -1)
-		stmt = strings.TrimSpace(stmt)
-		if stmt != "" && !strings.HasPrefix(stmt, "#") {
-			stmts = append(stmts, stmt)
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasSuffix(line, ";") {
+			builder.WriteString(line[:len(line)-1])
+			stmts = append(stmts, builder.String())
+			builder.Reset()
+			continue
+		}
+		if line != "" {
+			builder.WriteString(line)
+			builder.Write([]byte(" "))
 		}
 	}
 	return stmts
