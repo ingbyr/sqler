@@ -24,7 +24,7 @@ func LoadStmtsFromFile(sqlFile *os.File) []string {
 	var builder strings.Builder
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, "#") {
+		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "--") {
 			continue
 		}
 		if strings.HasSuffix(line, ";") {
