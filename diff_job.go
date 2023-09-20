@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"github.com/olekukonko/tablewriter"
 	"os"
-	"sqler/pkg"
 	"strings"
 )
 
@@ -52,10 +51,10 @@ func (job *DiffJob) DoExec() error {
 	table := tablewriter.NewWriter(job.output)
 	table.SetHeader(headers)
 	for i, db := range job.sqler.dbs {
-		dbCfg := job.sqler.cfg.DataSources[i]
-		job.compare(headers, lines, db, dbCfg, csvFile, table)
-		csvFile.Flush()
+		dsKey := job.sqler.cfg.DataSources[i].DsKey()
+		job.compare(headers, lines, db, dsKey, csvFile, table)
 	}
+	csvFile.Flush()
 	table.Render()
 	return nil
 }
@@ -64,8 +63,7 @@ func (job *DiffJob) SetWrapper(defaultJob *DefaultJob) {
 	job.DefaultJob = defaultJob
 }
 
-func (job *DiffJob) compare(headers []string, lines [][]string, db *sql.DB, dsCfg *pkg.DataSourceConfig, csvWriter *csv.Writer, table *tablewriter.Table) {
-
+func (job *DiffJob) compare(headers []string, lines [][]string, db *sql.DB, dsKey string, csvWriter *csv.Writer, table *tablewriter.Table) {
 	for _, line := range lines {
 		id := line[0]
 		rows, err := db.Query("select * from " + job.schema + " where id = '" + id + "'")
@@ -75,27 +73,27 @@ func (job *DiffJob) compare(headers []string, lines [][]string, db *sql.DB, dsCf
 		_, targetLines := mustConvertSqlResults(rows)
 		if len(targetLines) == 0 {
 			// no data
-			tipRow := job.generateTipRow(dsCfg.DsKey(), len(headers), id, "[NO_DATA]")
+			tipRow := job.generateTipRow(dsKey, len(headers), id, "[NO_DATA]")
+			table.Append(tipRow)
 			csvWriter.Write(tipRow)
 		} else if len(targetLines) > 1 {
 			// duplicated data
-			tipRow := job.generateTipRow(dsCfg.DsKey(), len(headers), id, "[DUPLICATED_DATA]")
+			tipRow := job.generateTipRow(dsKey, len(headers), id, "[DUPLICATED_DATA]")
 			table.Append(tipRow)
 			csvWriter.Write(tipRow)
 		} else {
 			targetLine := targetLines[0]
-			if same, comparedLine := job.sameLine(dsCfg.DsKey(), line, targetLine); !same {
+			if same, comparedLine := job.sameLine(dsKey, line, targetLine); !same {
 				table.Append(comparedLine)
 				csvWriter.Write(comparedLine)
 			}
 		}
 	}
-	table.Render()
 }
 
-func (job *DiffJob) generateTipRow(ds string, n int, id string, tip string) []string {
+func (job *DiffJob) generateTipRow(dsKey string, n int, id string, tip string) []string {
 	tipRow := make([]string, 0, n)
-	tipRow = append(tipRow, ds)
+	tipRow = append(tipRow, dsKey)
 	tipRow = append(tipRow, id)
 	for i := 2; i < n; i++ {
 		tipRow = append(tipRow, tip)
@@ -103,10 +101,10 @@ func (job *DiffJob) generateTipRow(ds string, n int, id string, tip string) []st
 	return tipRow
 }
 
-func (job *DiffJob) sameLine(ds string, originLine []string, targetLine []string) (bool, []string) {
+func (job *DiffJob) sameLine(dsKey string, originLine []string, targetLine []string) (bool, []string) {
 	colSize := len(originLine)
 	comparedLine := make([]string, 0, colSize+1)
-	comparedLine = append(comparedLine, ds)
+	comparedLine = append(comparedLine, dsKey)
 	same := true
 	for i, originItem := range originLine {
 		if originItem != targetLine[i] {
