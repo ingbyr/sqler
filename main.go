@@ -179,6 +179,16 @@ func executor(line string) {
 		return
 	}
 
+	if strings.HasPrefix(line, pkg.CmdDiff) {
+		schema := strings.Split(line, " ")[1]
+		diffJob := NewDiffJob(sqler, schema)
+		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor.Start()
+		jobExecutor.Submit(diffJob, 0)
+		jobExecutor.Shutdown(true)
+		return
+	}
+
 	executable := strings.HasSuffix(line, ";")
 	if executable {
 		line = line[:len(line)-1]

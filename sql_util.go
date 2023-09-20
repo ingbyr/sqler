@@ -53,3 +53,12 @@ func convertSqlResults(rows *sql.Rows) ([]string, [][]string, error) {
 
 	return columns, lines, nil
 }
+
+func mustConvertSqlResults(rows *sql.Rows) (columns []string, lines [][]string) {
+	var err error
+	columns, lines, err = convertSqlResults(rows)
+	if err != nil {
+		panic(err)
+	}
+	return
+}

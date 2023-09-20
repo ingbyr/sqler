@@ -6,6 +6,7 @@ const (
 	CmdClear      = "/clear"
 	CmdActive     = "/active"
 	CmdCount      = "/count"
+	CmdDiff       = "/diff"
 )
 
 func CommandSuggests() [][]string {
@@ -15,5 +16,6 @@ func CommandSuggests() [][]string {
 		{CmdClear, "Clear sql"},
 		{CmdActive, "Active config file"},
 		{CmdCount, "Count data in schema"},
+		{CmdDiff, "Show difference data line"},
 	}
 }
