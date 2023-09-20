@@ -40,6 +40,7 @@ type Job interface {
 	SetError(err error)
 	Error() error
 	StopOtherJobsWhenError() bool
+	WriteOutputString(output string)
 }
 
 var _ Job = (*DefaultJob)(nil)
@@ -52,6 +53,10 @@ type DefaultJob struct {
 	done      *sync.WaitGroup
 	printable bool
 	err       error
+}
+
+func (d *DefaultJob) WriteOutputString(output string) {
+	d.output.WriteString(output)
 }
 
 func (d *DefaultJob) Exec() error {
