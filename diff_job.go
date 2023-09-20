@@ -10,21 +10,23 @@ import (
 
 var _ ExecutableJob = (*CountJob)(nil)
 
-func NewDiffJob(sqler *Sqler, schema string) Job {
+func NewDiffJob(sqler *Sqler, schema string, baseDBIdx int) Job {
 	return WrapJob(&DiffJob{
-		sqler:  sqler,
-		schema: schema,
+		sqler:     sqler,
+		schema:    schema,
+		baseDBIdx: baseDBIdx,
 	})
 }
 
 type DiffJob struct {
-	sqler  *Sqler
-	schema string
+	sqler     *Sqler
+	schema    string
+	baseDBIdx int
 	*DefaultJob
 }
 
 func (job *DiffJob) DoExec() error {
-	baseDB := job.sqler.dbs[0]
+	baseDB := job.sqler.dbs[job.baseDBIdx]
 	rows, err := baseDB.Query("select * from " + job.schema)
 	if err != nil {
 		panic(err)
@@ -114,8 +116,10 @@ func (job *DiffJob) sameLine(dsKey string, originLine []string, targetLine []str
 	if !same {
 		for i := 0; i < colSize; i++ {
 			var b strings.Builder
-			b.WriteString(targetLine[i])
-			if targetLine[i] != originLine[i] {
+			if i == 0 {
+				b.WriteString(originLine[i])
+			} else if targetLine[i] != originLine[i] {
+				b.WriteString(targetLine[i])
 				b.WriteString(" [")
 				b.WriteString(originLine[i])
 				b.WriteString("]")

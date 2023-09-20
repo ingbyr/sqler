@@ -16,6 +16,6 @@ func CommandSuggests() [][]string {
 		{CmdClear, "Clear sql"},
 		{CmdActive, "Active config file"},
 		{CmdCount, "Count data in schema"},
-		{CmdDiff, "Show difference data line"},
+		{CmdDiff, "Show difference data line (schema [db idx])"},
 	}
 }
