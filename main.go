@@ -200,14 +200,13 @@ func executor(line string) {
 	}
 
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
-		line, _ = strings.CutPrefix(line, pkg.CmdExportCsv)
+		parts := splitBySpacesWithQuotes(line)
 		line = strings.TrimSpace(line)
-		index := strings.Index(line, " ")
-		if index < 0 {
-			jobPrinter.PrintInfo("Please provide a csv file name and SQL")
+		if len(parts) != 3 {
+			jobPrinter.PrintInfo("Invalid args")
 			return
 		}
-		csvFileName := line[0:index]
+		csvFileName := parts[1]
 		if !strings.HasSuffix(csvFileName, ".csv") {
 			jobPrinter.PrintInfo("File name must end with csv")
 			return
@@ -217,8 +216,7 @@ func executor(line string) {
 			panic(err)
 		}
 		defer csvFile.Close()
-		sqlStmt := line[index+1:]
-		sqlStmt, _ = strings.CutSuffix(sqlStmt, ";")
+		sqlStmt, _ := strings.CutSuffix(parts[2], ";")
 		sqlJobCtx := &SqlJobCtx{
 			StopWhenError:      false,
 			Serial:             true,
@@ -256,6 +254,31 @@ func execSql(opts *SqlJobCtx, sqlStmt ...string) {
 	} else {
 		sqler.ExecPara(opts, sqlStmt...)
 	}
+}
+
+func splitBySpacesWithQuotes(input string) []string {
+	var parts []string
+	inQuotes := false
+	currentPart := ""
+
+	for _, char := range input {
+		if char == '"' {
+			inQuotes = !inQuotes
+		} else if char == ' ' && !inQuotes {
+			if currentPart != "" {
+				parts = append(parts, currentPart)
+				currentPart = ""
+			}
+		} else {
+			currentPart += string(char)
+		}
+	}
+
+	if currentPart != "" {
+		parts = append(parts, currentPart)
+	}
+
+	return parts
 }
 
 func main() {
