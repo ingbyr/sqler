@@ -76,6 +76,7 @@ func (c *CountJob) DoExec() error {
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 	csvWriter := csv.NewWriter(file)
 
 	header := make([]string, 0, len(c.schemas)+1)

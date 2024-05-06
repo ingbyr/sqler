@@ -45,6 +45,7 @@ func (job *DiffJob) DoExec() error {
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 	csvFile := csv.NewWriter(file)
 	if err := csvFile.Write(headers); err != nil {
 		panic(err)

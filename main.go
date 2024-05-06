@@ -203,24 +203,30 @@ func executor(line string) {
 		line, _ = strings.CutPrefix(line, pkg.CmdExportCsv)
 		line = strings.TrimSpace(line)
 		index := strings.Index(line, " ")
+		if index < 0 {
+			jobPrinter.PrintInfo("Please provide a csv file name and SQL")
+			return
+		}
 		csvFileName := line[0:index]
 		if !strings.HasSuffix(csvFileName, ".csv") {
-			jobPrinter.PrintInfo("Must provide csv file name")
+			jobPrinter.PrintInfo("File name must end with csv")
 			return
 		}
 		csvFile, err := os.OpenFile(csvFileName, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
 			panic(err)
 		}
+		defer csvFile.Close()
 		sqlStmt := line[index+1:]
 		sqlStmt, _ = strings.CutSuffix(sqlStmt, ";")
-		execSql(&SqlJobCtx{
+		sqlJobCtx := &SqlJobCtx{
 			StopWhenError:      false,
 			Serial:             true,
 			ExportCsv:          true,
 			CsvFile:            csv.NewWriter(csvFile),
 			CsvFileHeaderWrote: false,
-		}, sqlStmt)
+		}
+		execSql(sqlJobCtx, sqlStmt)
 		return
 	}
 
