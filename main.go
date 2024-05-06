@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"github.com/c-bata/go-prompt"
@@ -90,7 +91,7 @@ func cli() {
 		doActions = true
 		initComponents()
 		jobPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
-		execSql(true, LoadSqlFile(flagSqlFile)...)
+		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
 	}
 
 	if flagInteractive {
@@ -198,13 +199,38 @@ func executor(line string) {
 		return
 	}
 
+	if strings.HasPrefix(line, pkg.CmdExportCsv) {
+		line, _ = strings.CutPrefix(line, pkg.CmdExportCsv)
+		line = strings.TrimSpace(line)
+		index := strings.Index(line, " ")
+		csvFileName := line[0:index]
+		if !strings.HasSuffix(csvFileName, ".csv") {
+			jobPrinter.PrintInfo("Must provide csv file name")
+			return
+		}
+		csvFile, err := os.OpenFile(csvFileName, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+		if err != nil {
+			panic(err)
+		}
+		sqlStmt := line[index+1:]
+		sqlStmt, _ = strings.CutSuffix(sqlStmt, ";")
+		execSql(&SqlJobCtx{
+			StopWhenError:      false,
+			Serial:             true,
+			ExportCsv:          true,
+			CsvFile:            csv.NewWriter(csvFile),
+			CsvFileHeaderWrote: false,
+		}, sqlStmt)
+		return
+	}
+
 	executable := strings.HasSuffix(line, ";")
 	if executable {
 		line = line[:len(line)-1]
 	}
 	sqlStmtCache.WriteString(line)
 	if executable {
-		execSql(false, sqlStmtCache.String())
+		execSql(&SqlJobCtx{StopWhenError: false}, sqlStmtCache.String())
 		sqlStmtCache = new(strings.Builder)
 	}
 }
@@ -214,12 +240,16 @@ func sourceSqlFiles(files []string) {
 		return
 	}
 	for _, file := range files {
-		execSql(true, LoadSqlFile(file)...)
+		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(file)...)
 	}
 }
 
-func execSql(stopWhenError bool, sqlStmt ...string) {
-	sqler.ExecPara(stopWhenError, sqlStmt...)
+func execSql(opts *SqlJobCtx, sqlStmt ...string) {
+	if opts.Serial {
+		sqler.ExecSerial(opts, sqlStmt...)
+	} else {
+		sqler.ExecPara(opts, sqlStmt...)
+	}
 }
 
 func main() {

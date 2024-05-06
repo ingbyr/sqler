@@ -15,20 +15,24 @@ var _ ExecutableJob = (*SqlJob)(nil)
 type SqlJob struct {
 	Stmt              string
 	DB                *sql.DB
+	DsCfg             *pkg.DataSourceConfig
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
+	*SqlJobCtx
 	*DefaultJob
 }
 
-func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB) Job {
+func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, opts *SqlJobCtx) Job {
 	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
-	stmt, useVerticalResult := checkStmtOptions(stmt)
+	stmt, useVerticalResult := parseStmt(stmt)
 	job := &SqlJob{
 		Stmt:              stmt,
 		DB:                db,
+		DsCfg:             dsCfg,
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
+		SqlJobCtx:         opts,
 	}
 	return WrapJob(job)
 }
@@ -56,6 +60,10 @@ func (job *SqlJob) DoExec() error {
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
 		job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
+	}
+	// Export data to csv if necessary
+	if job.ExportCsv {
+		job.exportDataToCsv(sqlColumns, sqlResultLines)
 	}
 	return nil
 }
@@ -101,7 +109,18 @@ func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns []
 	table.Render()
 }
 
-func checkStmtOptions(stmt string) (string, bool) {
+func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
+	if !job.CsvFileHeaderWrote {
+		job.CsvFile.Write(append(headers, "Data Source"))
+		job.CsvFileHeaderWrote = true
+	}
+	for _, row := range rows {
+		job.CsvFile.Write(append(row, job.DsCfg.DsKey()))
+	}
+	job.CsvFile.Flush()
+}
+
+func parseStmt(stmt string) (string, bool) {
 	if strings.HasSuffix(stmt, `\G`) {
 		return stmt[:len(stmt)-2], true
 	}

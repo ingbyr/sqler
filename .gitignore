@@ -4,3 +4,4 @@ tmp*
 *.log
 cmd/ss/config.yml
 *.csv
+*.exe

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 	"sqler/pkg"
-	"sync"
 )
 
 type Sqler struct {
@@ -53,35 +52,32 @@ func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
 	return s
 }
 
-// ExecSync executes sql in turn (each sql and database)
-func (s *Sqler) ExecSync(stopWhenError bool, stmts ...string) {
+// ExecSerial executes sql in turn (each sql and database)
+func (s *Sqler) ExecSerial(opts *SqlJobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
-	batchWg := &sync.WaitGroup{}
 	for _, stmt := range stmts {
 		for dbId := range s.dbs {
 			jobId++
-			batchWg.Add(1)
-			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId])
+			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], opts)
 			s.jobExecutor.Submit(job, dbId)
 			s.jobExecutor.WaitForNoRemainJob()
 		}
 	}
-	batchWg.Wait()
 }
 
 // ExecPara executes sql in parallel (each database)
-func (s *Sqler) ExecPara(stopWhenError bool, stmts ...string) {
+func (s *Sqler) ExecPara(opts *SqlJobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
 		for dbId := range s.dbs {
 			jobId++
-			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId])
+			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], opts)
 			s.jobExecutor.Submit(job, dbId)
 		}
 		s.jobExecutor.WaitForNoRemainJob()
-		if stopWhenError && s.jobExecutor.HasAnyError() {
+		if opts.StopWhenError && s.jobExecutor.HasAnyError() {
 			return
 		}
 	}
