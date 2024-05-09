@@ -55,6 +55,12 @@ func initJobPrinter(override bool) {
 }
 
 func initSqler(override bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println(r)
+			os.Exit(1)
+		}
+	}()
 	if sqler == nil || override {
 		cfg, err := pkg.LoadConfigFromFile(configFile)
 		if err != nil {
