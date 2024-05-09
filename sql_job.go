@@ -53,18 +53,27 @@ func (job *SqlJob) DoExec() error {
 	if err != nil {
 		return err
 	}
+
+	// Export data to csv if necessary
+	if job.ExportCsv {
+		dsKey := job.DsCfg.DsKey()
+		jobPrinter.PrintInfo(fmt.Sprintf("Exporting %s to CSV ... \n", dsKey))
+		job.exportDataToCsv(sqlColumns, sqlResultLines)
+		jobPrinter.PrintInfo(fmt.Sprintf("Exported %s to CSV\n", dsKey))
+		job.printable = false
+		return nil
+	}
+
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
 		job.output.Write([]byte("OK\n"))
 	}
+
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
 		job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
 	}
-	// Export data to csv if necessary
-	if job.ExportCsv {
-		job.exportDataToCsv(sqlColumns, sqlResultLines)
-	}
+
 	return nil
 }
 
