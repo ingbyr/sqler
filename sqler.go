@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
 	"sqler/pkg"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type Sqler struct {
@@ -14,7 +15,6 @@ type Sqler struct {
 	tableMetas  []*TableMeta
 	columnMeats []*ColumnMeta
 	jobExecutor *JobExecutor
-	jobPrinter  *JobPrinter
 }
 
 type TableMeta struct {

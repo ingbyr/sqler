@@ -5,13 +5,13 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/c-bata/go-prompt"
-	"github.com/olekukonko/tablewriter"
 	"os"
-	"os/signal"
 	"sqler/pkg"
 	"strconv"
 	"strings"
+
+	"github.com/c-bata/go-prompt"
+	"github.com/olekukonko/tablewriter"
 )
 
 var (
@@ -41,12 +41,6 @@ func parseFlags() {
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.Parse()
 	configFile = flagConfig
-}
-
-func initQuitChan() chan os.Signal {
-	quitChan := make(chan os.Signal, 1)
-	signal.Notify(quitChan, os.Interrupt, os.Kill)
-	return quitChan
 }
 
 func initComponents() {
@@ -201,7 +195,6 @@ func executor(line string) {
 
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
 		parts := splitBySpacesWithQuotes(line)
-		line = strings.TrimSpace(line)
 		if len(parts) != 3 {
 			jobPrinter.PrintInfo("Invalid args")
 			return
