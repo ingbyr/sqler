@@ -44,7 +44,8 @@ func (job *ConnJob) DoExec() error {
 		job.level = Error
 		return err
 	}
-	job.output.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, len(job.sqler.dbs), dsn))
+	job.output.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, len(job.sqler.dbs),
+		fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, "******", ds.Url, ds.Schema, dsArgs)))
 	job.sqler.dbs[job.Idx] = db
 	return nil
 }
