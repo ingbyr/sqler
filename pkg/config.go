@@ -47,7 +47,7 @@ func (cfg *Config) decryptProperties(aes *AesCipher) {
 	suffix := ")"
 	for _, ds := range cfg.DataSources {
 		if strings.HasPrefix(ds.Username, prefix) && strings.HasSuffix(ds.Username, suffix) {
-			ds.Password = aes.DecAsStr(ds.Username[len(prefix) : len(ds.Username)-len(suffix)])
+			ds.Username = aes.DecAsStr(ds.Username[len(prefix) : len(ds.Username)-len(suffix)])
 		}
 		if strings.HasPrefix(ds.Password, prefix) && strings.HasSuffix(ds.Password, suffix) {
 			ds.Password = aes.DecAsStr(ds.Password[len(prefix) : len(ds.Password)-len(suffix)])

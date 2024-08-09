@@ -9,10 +9,9 @@ import (
 var DefaultIV = []byte("21a34b56c78d90ef")
 
 type AesCipher struct {
-	key []byte
-	iv  []byte
-	enc cipher.Stream
-	dec cipher.Stream
+	key   []byte
+	iv    []byte
+	block cipher.Block
 }
 
 func NewAes(key []byte, iv []byte) *AesCipher {
@@ -24,17 +23,16 @@ func NewAes(key []byte, iv []byte) *AesCipher {
 		panic(err)
 	}
 	a := &AesCipher{
-		key: key,
-		iv:  iv,
-		enc: cipher.NewCFBEncrypter(block, iv),
-		dec: cipher.NewCFBDecrypter(block, iv),
+		key:   key,
+		iv:    iv,
+		block: block,
 	}
 	return a
 }
 
 func (c *AesCipher) Enc(data []byte) []byte {
 	b := make([]byte, len(data))
-	c.enc.XORKeyStream(b, data)
+	cipher.NewCFBEncrypter(c.block, c.iv).XORKeyStream(b, data)
 	return b
 }
 
@@ -44,7 +42,7 @@ func (c *AesCipher) EncAsHex(data string) string {
 
 func (c *AesCipher) Dec(data []byte) []byte {
 	b := make([]byte, len(data))
-	c.dec.XORKeyStream(b, data)
+	cipher.NewCFBDecrypter(c.block, c.iv).XORKeyStream(b, data)
 	return b
 }
 
