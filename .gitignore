@@ -5,3 +5,5 @@ tmp*
 cmd/ss/config.yml
 *.csv
 *.exe
+*.data
+*.key

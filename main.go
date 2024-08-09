@@ -5,12 +5,12 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"github.com/c-bata/go-prompt"
 	"os"
 	"sqler/pkg"
 	"strconv"
 	"strings"
 
-	"github.com/c-bata/go-prompt"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -22,10 +22,13 @@ var (
 
 var (
 	flagConfig      string
+	configFile      string
 	flagSqlFile     string
 	flagInteractive bool
 	flagVersion     bool
-	configFile      string
+	flagEnc         string
+	flagDec         string
+	flagCryptKey    string
 )
 
 var (
@@ -39,6 +42,9 @@ func parseFlags() {
 	flag.StringVar(&flagSqlFile, "f", "", "(file) sql文件路径")
 	flag.BoolVar(&flagInteractive, "i", false, "(interactive) 交互模式")
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
+	flag.StringVar(&flagEnc, "enc", "", "(enc) aes加密")
+	flag.StringVar(&flagDec, "dec", "", "(dec) aes解密")
+	flag.StringVar(&flagCryptKey, "key", "aes.key", "(key) aes密钥")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -92,6 +98,28 @@ func cli() {
 		initComponents()
 		jobPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
+	}
+
+	if flagEnc != "" {
+		key, err := os.ReadFile(flagCryptKey)
+		if err != nil {
+			panic(err)
+		}
+		aes := pkg.NewAes(key, []byte(""))
+		hex := aes.EncAsHex(flagEnc)
+		fmt.Println(hex)
+		os.Exit(0)
+	}
+
+	if flagDec != "" {
+		key, err := os.ReadFile(flagCryptKey)
+		if err != nil {
+			panic(err)
+		}
+		aes := pkg.NewAes(key, []byte(""))
+		data := aes.DecAsStr(flagDec)
+		fmt.Println(data)
+		os.Exit(0)
 	}
 
 	if flagInteractive {
