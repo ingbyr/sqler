@@ -9,7 +9,7 @@ import (
 func TestAES(t *testing.T) {
 	key, _ := os.ReadFile("aes.key")
 
-	a := NewAes(key, iv)
+	a := NewAes(key, DefaultIV)
 	encData, _ := os.ReadFile("enc.data")
 	decData := make([]byte, len(encData))
 	decData = a.Dec(encData)

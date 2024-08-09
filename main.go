@@ -71,7 +71,11 @@ func initSqler(override bool) {
 		}
 	}()
 	if sqler == nil || override {
-		cfg, err := pkg.LoadConfigFromFile(configFile)
+		key, err := os.ReadFile(flagCryptoKey)
+		if err != nil {
+			panic(err)
+		}
+		cfg, err := pkg.LoadConfigFromFile(configFile, pkg.NewAes(key, pkg.DefaultIV))
 		if err != nil {
 			panic(err)
 		}

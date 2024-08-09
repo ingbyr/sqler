@@ -7,7 +7,7 @@ import (
 
 func TestLoadConfigFromFile(t *testing.T) {
 	a := assert.New(t)
-	cfg, err := LoadConfigFromFile("../config.yml")
+	cfg, err := LoadConfigFromFile("../config.yml", nil)
 	a.NoError(err)
 	a.Equal(cfg.CommandsConfig.CountSchemas, []string{"t1", "t2"})
 }

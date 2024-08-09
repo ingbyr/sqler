@@ -3,6 +3,7 @@ package pkg
 import (
 	"gopkg.in/yaml.v3"
 	"os"
+	"strings"
 )
 
 const DefaultDataSourceArgs = "collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true"
@@ -15,7 +16,7 @@ func NewConfig() *Config {
 	}
 }
 
-func LoadConfigFromFile(configFile string) (*Config, error) {
+func LoadConfigFromFile(configFile string, aes *AesCipher) (*Config, error) {
 	file, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, err
@@ -23,6 +24,9 @@ func LoadConfigFromFile(configFile string) (*Config, error) {
 	cfg := new(Config)
 	if err = yaml.Unmarshal(file, cfg); err != nil {
 		return nil, err
+	}
+	if aes != nil {
+		cfg.decryptProperties(aes)
 	}
 	return cfg, nil
 }
@@ -36,6 +40,16 @@ type Config struct {
 
 func (cfg *Config) AddDataSource(ds *DataSourceConfig) {
 	cfg.DataSources = append(cfg.DataSources, ds)
+}
+
+func (cfg *Config) decryptProperties(aes *AesCipher) {
+	prefix := "ENC("
+	suffix := ")"
+	for _, ds := range cfg.DataSources {
+		if strings.HasPrefix(ds.Password, prefix) && strings.HasSuffix(ds.Password, suffix) {
+			ds.Password = aes.DecAsStr(ds.Password[len(prefix) : len(ds.Password)-len(suffix)])
+		}
+	}
 }
 
 type DataSourceConfig struct {
