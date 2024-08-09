@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -21,14 +22,15 @@ var (
 )
 
 var (
-	flagConfig      string
-	configFile      string
-	flagSqlFile     string
-	flagInteractive bool
-	flagVersion     bool
-	flagEnc         string
-	flagDec         string
-	flagCryptKey    string
+	flagConfig       string
+	configFile       string
+	flagSqlFile      string
+	flagInteractive  bool
+	flagVersion      bool
+	flagEnc          string
+	flagDec          string
+	flagCryptoKey    string
+	flagGenCryptoKey string
 )
 
 var (
@@ -44,7 +46,8 @@ func parseFlags() {
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.StringVar(&flagEnc, "enc", "", "(enc) aes加密")
 	flag.StringVar(&flagDec, "dec", "", "(dec) aes解密")
-	flag.StringVar(&flagCryptKey, "key", "aes.key", "(key) aes密钥")
+	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
+	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -101,7 +104,7 @@ func cli() {
 	}
 
 	if flagEnc != "" {
-		key, err := os.ReadFile(flagCryptKey)
+		key, err := os.ReadFile(flagCryptoKey)
 		if err != nil {
 			panic(err)
 		}
@@ -112,7 +115,7 @@ func cli() {
 	}
 
 	if flagDec != "" {
-		key, err := os.ReadFile(flagCryptKey)
+		key, err := os.ReadFile(flagCryptoKey)
 		if err != nil {
 			panic(err)
 		}
@@ -120,6 +123,15 @@ func cli() {
 		data := aes.DecAsStr(flagDec)
 		fmt.Println(data)
 		os.Exit(0)
+	}
+
+	if flagGenCryptoKey != "" {
+		bytes := make([]byte, 16)
+		_, err := rand.Read(bytes)
+		if err != nil {
+			panic(err)
+		}
+		os.WriteFile(flagGenCryptoKey, bytes, 0666)
 	}
 
 	if flagInteractive {
