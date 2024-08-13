@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/csv"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/c-bata/go-prompt"
@@ -31,6 +32,7 @@ var (
 	flagDec          string
 	flagCryptoKey    string
 	flagGenCryptoKey string
+	flagHex          bool
 )
 
 var (
@@ -47,7 +49,8 @@ func parseFlags() {
 	flag.StringVar(&flagEnc, "enc", "", "(enc) aes加密")
 	flag.StringVar(&flagDec, "dec", "", "(dec) aes解密")
 	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
-	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
+	flag.StringVar(&flagGenCryptoKey, "gen-key", "aes.key", "(generate key) 生成aes密钥")
+	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -71,7 +74,7 @@ func initSqler(override bool) {
 		}
 	}()
 	if sqler == nil || override {
-		key, err := os.ReadFile(flagCryptoKey)
+		key, err := loadAesKey()
 		if err != nil {
 			panic(err)
 		}
@@ -108,7 +111,7 @@ func cli() {
 	}
 
 	if flagEnc != "" {
-		key, err := os.ReadFile(flagCryptoKey)
+		key, err := loadAesKey()
 		if err != nil {
 			panic(err)
 		}
@@ -119,7 +122,7 @@ func cli() {
 	}
 
 	if flagDec != "" {
-		key, err := os.ReadFile(flagCryptoKey)
+		key, err := loadAesKey()
 		if err != nil {
 			panic(err)
 		}
@@ -135,7 +138,12 @@ func cli() {
 		if err != nil {
 			panic(err)
 		}
-		os.WriteFile(flagGenCryptoKey, bytes, 0666)
+		if flagHex {
+			fmt.Println(hex.EncodeToString(bytes))
+		} else {
+			os.WriteFile(flagGenCryptoKey, bytes, 0666)
+		}
+		os.Exit(0)
 	}
 
 	if flagInteractive {
@@ -158,6 +166,13 @@ func cli() {
 	if !doActions {
 		flag.PrintDefaults()
 	}
+}
+
+func loadAesKey() ([]byte, error) {
+	if flagHex {
+		return hex.DecodeString(flagCryptoKey)
+	}
+	return os.ReadFile(flagCryptoKey)
 }
 
 func currentPrefix() string {

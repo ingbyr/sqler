@@ -10,7 +10,7 @@ dataSources:
     url: 127.0.0.1:3308
     schema: db_01
     username: root
-    password: root
+    password: ENC(17d49448)
     enabled: true
   - type: mysql
     url: 127.0.0.1:3309
