@@ -49,7 +49,7 @@ func parseFlags() {
 	flag.StringVar(&flagEnc, "enc", "", "(enc) aes加密")
 	flag.StringVar(&flagDec, "dec", "", "(dec) aes解密")
 	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
-	flag.StringVar(&flagGenCryptoKey, "gen-key", "aes.key", "(generate key) 生成aes密钥")
+	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
 	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
 	flag.Parse()
 	configFile = flagConfig
