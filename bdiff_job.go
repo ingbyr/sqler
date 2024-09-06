@@ -87,7 +87,7 @@ func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []str
 	}
 	// Skip compare data step if has different columns
 	if !sameSlices(baseColumns, columns) {
-		mustWriteToCsv(csvFile, columns, schema, dsKey)
+		mustWriteToCsv(csvFile, columns, schema, dsKey, "DIFF_TABLE")
 		return
 	}
 	rowMap := rowResultToMap(rows)

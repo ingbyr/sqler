@@ -25,3 +25,4 @@ commands:
   bdiff-schemas:
     - a
     - b
+    - c
