@@ -8,10 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/c-bata/go-prompt"
+	"golang.org/x/term"
 	"os"
+	"os/signal"
 	"sqler/pkg"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/olekukonko/tablewriter"
 )
@@ -351,5 +354,23 @@ func splitBySpacesWithQuotes(input string) []string {
 }
 
 func main() {
+
+	// 获取终端文件描述符
+	fd := int(os.Stdin.Fd())
+	oldState, err := term.MakeRaw(fd)
+	if err != nil {
+		fmt.Println("Error getting terminal state:", err)
+		os.Exit(1)
+	}
+
+	// 创建信号处理器
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		term.Restore(fd, oldState)
+		os.Exit(0)
+	}()
 	cli()
 }
