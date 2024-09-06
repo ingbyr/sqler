@@ -70,6 +70,7 @@ func (ds *DataSourceConfig) DsKey() string {
 
 type CommandsConfig struct {
 	CountSchemas []string `yaml:"count-schemas"`
+	BdiffSchemas []string `yaml:"bdiff-schemas"`
 }
 
 func (c *CommandsConfig) AddCountSchema(schema string) {

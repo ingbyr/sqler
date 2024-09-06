@@ -10,7 +10,7 @@ dataSources:
     url: 127.0.0.1:3308
     schema: db_01
     username: root
-    password: ENC(17d49448)
+    password: root
     enabled: true
   - type: mysql
     url: 127.0.0.1:3309
@@ -22,3 +22,6 @@ commands:
   count-schemas:
     - t1
     - t2
+  bdiff-schemas:
+    - a
+    - b

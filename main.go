@@ -258,6 +258,17 @@ func executor(line string) {
 		return
 	}
 
+	if strings.HasPrefix(line, pkg.CmdBdiff) {
+		cmdParts := strings.Split(line, " ")
+		schemas := cmdParts[1:]
+		bdiffJob := NewBdiffJob(sqler, schemas)
+		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor.Start()
+		jobExecutor.Submit(bdiffJob, 0)
+		jobExecutor.Shutdown(true)
+		return
+	}
+
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
 		parts := splitBySpacesWithQuotes(line)
 		if len(parts) != 3 {
