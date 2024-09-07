@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strings"
 )
 
 var _ ExecutableJob = (*CountJob)(nil)
@@ -28,28 +27,27 @@ type BdiffJob struct {
 
 func (job *BdiffJob) DoExec() error {
 	baseDb := job.sqler.dbs[0]
-
-	// csv file
-	//csvFileName := "diff-" + strconv.FormatInt(time.Now().Unix(), 10) + ".csv"
-	csvFileName := "bdiff.csv"
-	file, err := os.OpenFile(csvFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0665)
-	if err != nil {
-		panic(err)
+	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
+		return err
 	}
-	defer file.Close()
-	csvFile := csv.NewWriter(file)
-
 	// Compare
 	for sid, schema := range job.schemas {
+		// csv file
+		csvFileName := fmt.Sprintf("bdiff/%s.csv", schema)
+		file, err := os.OpenFile(csvFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0665)
+		if err != nil {
+			panic(err)
+		}
+		csvFile := csv.NewWriter(file)
 		// Columns and base row data
 		query := "select * from " + schema
 		rawBaseRows, err := baseDb.Query(query)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		baseColumns, baseRows, err := convertSqlResults(rawBaseRows)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		// Write csv columns header
 		mustWriteToCsv(csvFile, baseColumns, "Table", "DataSource", "Type")
@@ -65,9 +63,13 @@ func (job *BdiffJob) DoExec() error {
 
 			jobPrinter.PrintInfo(fmt.Sprintf("Compared %d/%d schema, %d/%d db", sid, len(schema), did, len(job.sqler.dbs)))
 		}
+		csvFile.Flush()
+		if err := file.Close(); err != nil {
+			return err
+		}
+		jobPrinter.PrintInfo("Csv file: " + csvFileName)
 	}
 
-	jobPrinter.PrintInfo("Csv file: " + csvFileName)
 	return nil
 }
 
@@ -105,8 +107,9 @@ func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseRowMap ma
 			continue
 		}
 		// Different row
-		if same, diffRow := checkSameRow(baseRow, row); !same {
-			mustWriteToCsv(csvFile, diffRow, schema, dsKey, "DIFF")
+		if !sameSlices(baseRow, row) {
+			mustWriteToCsv(csvFile, baseRow, schema, "base", "DIFF")
+			mustWriteToCsv(csvFile, row, schema, dsKey, "DIFF")
 			continue
 		}
 	}
@@ -116,28 +119,6 @@ func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseRowMap ma
 			mustWriteToCsv(csvFile, baseRow, schema, dsKey, "MISSING")
 		}
 	}
-}
-
-func checkSameRow(originLine []string, targetLine []string) (bool, []string) {
-	if sameSlices(originLine, targetLine) {
-		return true, []string{}
-	}
-
-	colSize := len(originLine)
-	comparedLine := make([]string, 0, colSize)
-	for i := 0; i < colSize; i++ {
-		var b strings.Builder
-		if i == 0 {
-			b.WriteString(originLine[i])
-		} else if targetLine[i] != originLine[i] {
-			b.WriteString(targetLine[i])
-			b.WriteString(" [")
-			b.WriteString(originLine[i])
-			b.WriteString("]")
-		}
-		comparedLine = append(comparedLine, b.String())
-	}
-	return false, comparedLine
 }
 
 func sameSlices(slice1, slice2 []string) bool {
