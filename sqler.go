@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"sqler/pkg"
-
-	_ "github.com/go-sql-driver/mysql"
 )
 
 type Sqler struct {

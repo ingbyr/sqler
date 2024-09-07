@@ -1,0 +1,27 @@
+dataSourceArgs: collation=utf8mb4_general_ci&multiStatements=true&multiStatements=true
+dataSources:
+  - type: sqlite3
+    url:
+    schema: db_base
+    username: root
+    password: root
+    enabled: true
+  - type: sqlite3
+    url:
+    schema: db_01
+    username: root
+    password: root
+    enabled: true
+  - type: sqlite3
+    url:
+    schema: db_02
+    username: root
+    password: root
+    enabled: true
+commands:
+  count-schemas:
+    - t1
+    - t2
+  bdiff-schemas:
+    - a
+    - b
