@@ -1,13 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"errors"
 	"fmt"
 	"os"
-	"sqler/pkg"
-	"sync"
 )
 
 var _ ExecutableJob = (*CountJob)(nil)
@@ -27,43 +24,29 @@ type CountJob struct {
 
 func (c *CountJob) DoExec() error {
 	// ds - ds - count
-	mapMu := new(sync.Mutex)
 	schemaDsCountMap := make(map[string]map[string]string)
 	for _, schema := range c.schemas {
 		schemaDsCountMap[schema] = make(map[string]string)
 	}
-	errsMu := new(sync.Mutex)
 	errs := make([]error, 0)
-	wg := new(sync.WaitGroup)
-	wg.Add(len(c.sqler.dbs))
 	for dbID, db := range sqler.dbs {
-		go func(dbID int, db *sql.DB, ds *pkg.DataSourceConfig) {
-			for _, schema := range c.schemas {
-				cntQuery := "select count(*) from " + schema
-				results, err := db.Query(cntQuery)
-				if err != nil {
-					errsMu.Lock()
-					errs = append(errs, err)
-					errsMu.Unlock()
-					continue
-				}
-				_, rows, err := convertSqlResults(results)
-				if err != nil {
-					errsMu.Lock()
-					errs = append(errs, err)
-					errsMu.Unlock()
-					continue
-				}
-				mapMu.Lock()
-				schemaDsCountMap[schema][ds.DsKey()] = rows[0][0]
-				mapMu.Unlock()
+		ds := sqler.cfg.DataSources[dbID]
+		for _, schema := range c.schemas {
+			cntQuery := "select count(*) from " + schema
+			results, err := db.Query(cntQuery)
+			if err != nil {
+				errs = append(errs, err)
+				continue
 			}
-			fmt.Printf("Count db %s\n", ds.DsKey())
-			wg.Done()
-		}(dbID, db, sqler.cfg.DataSources[dbID])
+			_, rows, err := convertSqlResults(results)
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+			schemaDsCountMap[schema][ds.DsKey()] = rows[0][0]
+		}
+		fmt.Printf("Count db %d/%d %s\n", dbID+1, len(sqler.dbs), ds.DsKey())
 	}
-
-	wg.Wait()
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)

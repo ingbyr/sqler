@@ -61,7 +61,7 @@ func (job *BdiffJob) DoExec() error {
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query)
 			csvFile.Flush()
 
-			fmt.Println(fmt.Sprintf("Compared %d/%d schema, %d/%d db", sid, len(schema), did, len(job.sqler.dbs)))
+			fmt.Sprintf("Compared %d/%d table [%s], %d/%d db\n", sid+1, len(job.schemas), schema, did, len(job.sqler.dbs)-1)
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
