@@ -61,13 +61,13 @@ func (job *BdiffJob) DoExec() error {
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query)
 			csvFile.Flush()
 
-			jobPrinter.PrintInfo(fmt.Sprintf("Compared %d/%d schema, %d/%d db", sid, len(schema), did, len(job.sqler.dbs)))
+			fmt.Println(fmt.Sprintf("Compared %d/%d schema, %d/%d db", sid, len(schema), did, len(job.sqler.dbs)))
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
 			return err
 		}
-		jobPrinter.PrintInfo("Csv file: " + csvFileName)
+		fmt.Println("Csv file: " + csvFileName)
 	}
 
 	return nil
@@ -88,7 +88,7 @@ func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []str
 		panic(err)
 	}
 	// Skip compare data step if has different columns
-	if !sameSlices(baseColumns, columns) {
+	if same, _ := sameRow(baseColumns, columns); !same {
 		mustWriteToCsv(csvFile, columns, schema, dsKey, "DIFF_TABLE")
 		return
 	}
@@ -107,9 +107,9 @@ func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseRowMap ma
 			continue
 		}
 		// Different row
-		if !sameSlices(baseRow, row) {
-			mustWriteToCsv(csvFile, baseRow, schema, "base", "DIFF")
-			mustWriteToCsv(csvFile, row, schema, dsKey, "DIFF")
+		if same, diff := sameRow(baseRow, row); !same {
+			mustWriteToCsv(csvFile, baseRow, schema, "BASE", "DIFF")
+			mustWriteToCsv(csvFile, diff, schema, dsKey, "DIFF")
 			continue
 		}
 	}
@@ -121,16 +121,21 @@ func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseRowMap ma
 	}
 }
 
-func sameSlices(slice1, slice2 []string) bool {
-	if len(slice1) != len(slice2) {
-		return false
+func sameRow(baseRow, row []string) (bool, []string) {
+	var diffRow []string
+	if len(baseRow) != len(row) {
+		diffRow = row
+		return false, diffRow
 	}
-	for i := range slice1 {
-		if slice1[i] != slice2[i] {
-			return false
+	for i := range baseRow {
+		if baseRow[i] != row[i] {
+			if len(diffRow) == 0 {
+				diffRow = make([]string, len(baseRow))
+			}
+			diffRow[i] = row[i]
 		}
 	}
-	return true
+	return len(diffRow) == 0, diffRow
 }
 
 func mustWriteToCsv(csvFile *csv.Writer, data []string, extraHeaders ...string) {
