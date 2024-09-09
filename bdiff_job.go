@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"sqler/pkg"
 )
 
 var _ ExecutableJob = (*CountJob)(nil)
@@ -55,8 +56,8 @@ func (job *BdiffJob) DoExec() error {
 			if dbIdx == 0 {
 				continue
 			}
-			fmt.Printf("Comparing %d/%d table [%s] at db %d/%d [%s] ... ",
-				sid+1, len(job.schemas), schema, dbIdx, len(job.sqler.dbs)-1, job.sqler.cfg.DataSources[dbIdx].DsKey())
+			fmt.Printf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
+				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1)
 			// Compare data in another db
 			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
 			baseRowMap := rowResultToMap(baseRows)
@@ -68,7 +69,7 @@ func (job *BdiffJob) DoExec() error {
 		if err := file.Close(); err != nil {
 			return err
 		}
-		fmt.Printf("Saved to csv file: %s\n\n", csvFileName)
+		fmt.Printf("[%s] Saved to csv file: %s\n\n", pkg.Now(), csvFileName)
 	}
 
 	return nil
