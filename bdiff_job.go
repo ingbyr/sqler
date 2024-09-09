@@ -51,23 +51,24 @@ func (job *BdiffJob) DoExec() error {
 		}
 		// Write csv columns header
 		mustWriteToCsv(csvFile, baseColumns, "Table", "DataSource", "Type")
-		for did, db := range job.sqler.dbs {
-			if did == 0 {
+		for dbIdx, db := range job.sqler.dbs {
+			if dbIdx == 0 {
 				continue
 			}
+			fmt.Printf("Comparing %d/%d table [%s] at db %d/%d [%s] ... ",
+				sid+1, len(job.schemas), schema, dbIdx, len(job.sqler.dbs)-1, job.sqler.cfg.DataSources[dbIdx].DsKey())
 			// Compare data in another db
-			dsKey := job.sqler.cfg.DataSources[did].DsKey()
+			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
 			baseRowMap := rowResultToMap(baseRows)
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query)
 			csvFile.Flush()
-
-			fmt.Sprintf("Compared %d/%d table [%s], %d/%d db\n", sid+1, len(job.schemas), schema, did, len(job.sqler.dbs)-1)
+			fmt.Printf("Done\n")
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
 			return err
 		}
-		fmt.Println("Csv file: " + csvFileName)
+		fmt.Printf("Saved to csv file: %s\n\n", csvFileName)
 	}
 
 	return nil
