@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"errors"
-	"github.com/olekukonko/tablewriter"
+	"fmt"
 	"os"
 	"sqler/pkg"
 	"sync"
@@ -26,7 +26,7 @@ type CountJob struct {
 }
 
 func (c *CountJob) DoExec() error {
-	// schema - ds - count
+	// ds - ds - count
 	mapMu := new(sync.Mutex)
 	schemaDsCountMap := make(map[string]map[string]string)
 	for _, schema := range c.schemas {
@@ -58,6 +58,7 @@ func (c *CountJob) DoExec() error {
 				schemaDsCountMap[schema][ds.DsKey()] = rows[0][0]
 				mapMu.Unlock()
 			}
+			fmt.Printf("Count db %s\n", ds.DsKey())
 			wg.Done()
 		}(dbID, db, sqler.cfg.DataSources[dbID])
 	}
@@ -68,9 +69,6 @@ func (c *CountJob) DoExec() error {
 		return errors.Join(errs...)
 	}
 
-	// Write output
-	table := tablewriter.NewWriter(c.output)
-
 	// Csv
 	file, err := os.OpenFile("count.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
@@ -80,32 +78,27 @@ func (c *CountJob) DoExec() error {
 	csvWriter := csv.NewWriter(file)
 
 	header := make([]string, 0, len(c.schemas)+1)
-	header = append(header, "DataSource")
-	for _, schema := range c.schemas {
-		header = append(header, schema)
+	header = append(header, "Tables")
+	for _, ds := range c.sqler.cfg.DataSources {
+		header = append(header, ds.DsKey())
 	}
-	// Table header
-	table.SetHeader(header)
-	// Csv header
 	if err := csvWriter.Write(header); err != nil {
 		return err
 	}
 
-	for _, ds := range sqler.cfg.DataSources {
-		tableRow := make([]string, 0, len(c.schemas)+1)
-		tableRow = append(tableRow, ds.DsKey())
-		for _, schema := range c.schemas {
+	for _, schema := range c.schemas {
+		tableRow := make([]string, 0, len(sqler.cfg.DataSources)+1)
+		tableRow = append(tableRow, schema)
+		for _, ds := range sqler.cfg.DataSources {
 			tableRow = append(tableRow, schemaDsCountMap[schema][ds.DsKey()])
 		}
-		// Table content
-		table.Append(tableRow)
 		// Csv content
 		if err := csvWriter.Write(tableRow); err != nil {
 			return err
 		}
+		csvWriter.Flush()
 	}
-	table.Render()
-	csvWriter.Flush()
+	fmt.Println("Result saved to " + file.Name())
 	return nil
 }
 

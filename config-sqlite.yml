@@ -20,8 +20,8 @@ dataSources:
     enabled: true
 commands:
   count-schemas:
-    - t1
-    - t2
+    - a
+    - b
   bdiff-schemas:
     - a
     - b

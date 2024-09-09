@@ -1,4 +1,4 @@
-build: win linux win-ss linux-ss
+build: win linux
 
 # generate code
 generate:
