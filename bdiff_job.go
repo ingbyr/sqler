@@ -155,9 +155,9 @@ func generateInsertSql(schema string, columns []string, row []string) string {
 	sb.WriteString(schema)
 	sb.WriteString("(")
 	sb.WriteString(strings.Join(columns, ","))
-	sb.WriteString(") VALUES (")
-	sb.WriteString(strings.Join(row, ","))
-	sb.WriteString(")")
+	sb.WriteString(") VALUES ('")
+	sb.WriteString(strings.Join(row, "', '"))
+	sb.WriteString("')")
 	return sb.String()
 }
 
