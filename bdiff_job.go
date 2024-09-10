@@ -6,23 +6,26 @@ import (
 	"fmt"
 	"os"
 	"sqler/pkg"
+	"strconv"
 )
 
 var _ ExecutableJob = (*CountJob)(nil)
 
-func NewBdiffJob(sqler *Sqler, schemas []string) Job {
+func NewBdiffJob(sqler *Sqler, schemas []string, maxRow int) Job {
 	if len(schemas) == 0 {
 		schemas = sqler.cfg.CommandsConfig.BdiffSchemas
 	}
 	return WrapJob(&BdiffJob{
 		sqler:   sqler,
 		schemas: schemas,
+		maxRow:  maxRow,
 	})
 }
 
 type BdiffJob struct {
 	sqler   *Sqler
 	schemas []string
+	maxRow  int
 	*DefaultJob
 }
 
@@ -41,6 +44,24 @@ func (job *BdiffJob) DoExec() error {
 		}
 		csvFile := csv.NewWriter(file)
 		// Columns and base row data
+		fmt.Printf("[%s] Loading BASE data: %s\n", pkg.Now(), schema)
+		// Check row number
+		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
+		if err != nil {
+			return err
+		}
+		_, result, err := convertSqlResults(rows)
+		if err != nil {
+			return err
+		}
+		rowNumber, err := strconv.Atoi(result[0][0])
+		if err != nil {
+			return err
+		}
+		if job.maxRow < rowNumber {
+			fmt.Printf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n\n", pkg.Now(), schema, rowNumber, job.maxRow)
+			continue
+		}
 		query := "select * from " + schema
 		rawBaseRows, err := baseDb.Query(query)
 		if err != nil {

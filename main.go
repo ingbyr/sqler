@@ -34,6 +34,7 @@ var (
 	flagHex          bool
 	flagBdiff        bool
 	flagSchemas      string
+	flagMaxRowNumber int
 )
 
 var (
@@ -52,8 +53,9 @@ func parseFlags() {
 	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
 	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
 	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
-	flag.BoolVar(&flagBdiff, "bdiff", false, "Better diff tool")
+	flag.BoolVar(&flagBdiff, "bdiff", false, "better diff tool")
 	flag.StringVar(&flagSchemas, "schemas", "", "schema1 schema2 ...")
+	flag.IntVar(&flagMaxRowNumber, "max-row", 10_000, "max row")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -157,7 +159,7 @@ func cli() {
 		} else {
 			schemas = strings.Split(flagSchemas, " ")
 		}
-		bdiffJob := NewBdiffJob(sqler, schemas)
+		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber)
 		jobExecutor := NewJobExecutor(1, jobPrinter)
 		jobExecutor.Start()
 		jobExecutor.Submit(bdiffJob, 0)
