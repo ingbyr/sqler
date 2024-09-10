@@ -32,6 +32,8 @@ var (
 	flagCryptoKey    string
 	flagGenCryptoKey string
 	flagHex          bool
+	flagBdiff        bool
+	flagSchemas      string
 )
 
 var (
@@ -50,6 +52,8 @@ func parseFlags() {
 	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
 	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
 	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
+	flag.BoolVar(&flagBdiff, "bdiff", false, "Better diff tool")
+	flag.StringVar(&flagSchemas, "schemas", "", "schema1 schema2 ...")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -143,6 +147,22 @@ func cli() {
 			os.WriteFile(flagGenCryptoKey, bytes, 0666)
 		}
 		os.Exit(0)
+	}
+
+	if flagBdiff {
+		initComponents()
+		var schemas []string
+		if flagSchemas == "" {
+			schemas = sqler.cfg.CommandsConfig.BdiffSchemas
+		} else {
+			schemas = strings.Split(flagSchemas, " ")
+		}
+		bdiffJob := NewBdiffJob(sqler, schemas)
+		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor.Start()
+		jobExecutor.Submit(bdiffJob, 0)
+		jobExecutor.Shutdown(true)
+		return
 	}
 
 	if flagInteractive {
