@@ -43,9 +43,9 @@ func (job *BdiffJob) DoExec() error {
 			panic(err)
 		}
 		csvFile := csv.NewWriter(file)
-		// Columns and base row data
+
 		fmt.Printf("[%s] Loading BASE data: %s\n", pkg.Now(), schema)
-		// Check row number
+		// Skip if too many data
 		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
 		if err != nil {
 			return err
@@ -62,6 +62,7 @@ func (job *BdiffJob) DoExec() error {
 			fmt.Printf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n\n", pkg.Now(), schema, rowNumber, job.maxRow)
 			continue
 		}
+		// Start compare data
 		query := "select * from " + schema
 		rawBaseRows, err := baseDb.Query(query)
 		if err != nil {
