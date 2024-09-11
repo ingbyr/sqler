@@ -6,7 +6,6 @@ const (
 	CmdClear      = "/clear"
 	CmdActive     = "/active"
 	CmdCount      = "/count"
-	CmdDiff       = "/diff"
 	CmdExportCsv  = "/export-csv"
 )
 
@@ -17,7 +16,6 @@ func CommandSuggests() [][]string {
 		{CmdClear, "Clear sql"},
 		{CmdActive, "Active config file"},
 		{CmdCount, "Count data in schema"},
-		{CmdDiff, "Show difference data line (schema [db idx])"},
 		{CmdExportCsv, "Export data to csv file (csv-file-name \"sql\")"},
 	}
 }

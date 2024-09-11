@@ -260,25 +260,6 @@ func executor(line string) {
 		return
 	}
 
-	if strings.HasPrefix(line, pkg.CmdDiff) {
-		cmdParts := strings.Split(line, " ")
-		schema := cmdParts[1]
-		baseDbIdx := 0
-		var err error
-		if len(cmdParts) == 3 {
-			baseDbIdx, err = strconv.Atoi(cmdParts[2])
-			if err != nil {
-				panic(err)
-			}
-		}
-		diffJob := NewDiffJob(sqler, schema, baseDbIdx)
-		jobExecutor := NewJobExecutor(1, jobPrinter)
-		jobExecutor.Start()
-		jobExecutor.Submit(diffJob, 0)
-		jobExecutor.Shutdown(true)
-		return
-	}
-
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
 		parts := splitBySpacesWithQuotes(line)
 		if len(parts) != 3 {
