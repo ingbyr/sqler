@@ -171,20 +171,22 @@ func generateInsertSql(schema string, columns []string, row []string) string {
 }
 
 func sameRow(baseRow, row []string) (bool, []string) {
-	var diffRow []string
+	diffRow := make([]string, len(baseRow))
+	same := true
 	if len(baseRow) != len(row) {
+		same = false
 		diffRow = row
-		return false, diffRow
+		return same, diffRow
 	}
 	for i := range baseRow {
 		if baseRow[i] != row[i] {
-			if len(diffRow) == 0 {
-				diffRow = make([]string, len(baseRow))
-			}
+			same = false
 			diffRow[i] = row[i]
+		} else {
+			diffRow[i] = "-"
 		}
 	}
-	return len(diffRow) == 0, diffRow
+	return same, diffRow
 }
 
 func mustWriteToCsv(csvFile *csv.Writer, data []string, schema, dsKey, diffType, sql string) {
