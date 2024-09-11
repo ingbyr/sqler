@@ -214,7 +214,7 @@ func sameRow(baseRow, row []string, skipCol []bool) (bool, []string) {
 			same = false
 			diffRow[i] = row[i]
 		} else {
-			diffRow[i] = "SAME"
+			diffRow[i] = "/"
 		}
 	}
 	return same, diffRow
