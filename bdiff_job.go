@@ -16,17 +16,23 @@ func NewBdiffJob(sqler *Sqler, schemas []string, maxRow int) Job {
 	if len(schemas) == 0 {
 		schemas = sqler.cfg.CommandsConfig.BdiffSchemas
 	}
+	skipColsMap := make(map[string]bool, len(sqler.cfg.CommandsConfig.BdiffSchemas))
+	for _, skipCol := range sqler.cfg.CommandsConfig.BdiffSkipCols {
+		skipColsMap[skipCol] = true
+	}
 	return WrapJob(&BdiffJob{
-		sqler:   sqler,
-		schemas: schemas,
-		maxRow:  maxRow,
+		sqler:       sqler,
+		schemas:     schemas,
+		maxRow:      maxRow,
+		skipColsMap: skipColsMap,
 	})
 }
 
 type BdiffJob struct {
-	sqler   *Sqler
-	schemas []string
-	maxRow  int
+	sqler       *Sqler
+	schemas     []string
+	maxRow      int
+	skipColsMap map[string]bool
 	*DefaultJob
 }
 
@@ -35,7 +41,7 @@ func (job *BdiffJob) DoExec() error {
 	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
-	// Compare
+	// Compare schemas
 	for sid, schema := range job.schemas {
 		// csv file
 		csvFileName := fmt.Sprintf("bdiff/%s.csv", schema)
@@ -63,7 +69,7 @@ func (job *BdiffJob) DoExec() error {
 			fmt.Printf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n\n", pkg.Now(), schema, rowNumber, job.maxRow)
 			continue
 		}
-		// Start compare data
+		// Get base data
 		query := "select * from " + schema
 		rawBaseRows, err := baseDb.Query(query)
 		if err != nil {
@@ -73,18 +79,27 @@ func (job *BdiffJob) DoExec() error {
 		if err != nil {
 			return err
 		}
-		// Write csv columns header
 		mustWriteToCsv(csvFile, baseColumns, "Table", "DataSource", "Type", "SQL")
+
+		// Generate skipping cols index
+		skipCol := make([]bool, len(baseColumns))
+		for i, column := range baseColumns {
+			if job.skipColsMap[column] {
+				skipCol[i] = true
+			}
+		}
+
+		// Compare to other db
 		for dbIdx, db := range job.sqler.dbs {
 			if dbIdx == 0 {
 				continue
 			}
 			fmt.Printf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
 				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1)
-			// Compare data in another db
 			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
 			baseRowMap := rowResultToMap(baseRows)
-			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query)
+
+			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query, skipCol)
 			csvFile.Flush()
 			fmt.Printf("Done\n")
 		}
@@ -102,7 +117,9 @@ func (job *BdiffJob) SetWrapper(defaultJob *DefaultJob) {
 	job.DefaultJob = defaultJob
 }
 
-func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string, baseRowMap map[string][]string, db *sql.DB, query string) {
+func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,
+	baseRowMap map[string][]string, db *sql.DB, query string, skipCol []bool) {
+
 	// Query target db row data
 	rawRows, err := db.Query(query)
 	if err != nil {
@@ -113,16 +130,18 @@ func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []str
 		panic(err)
 	}
 	// Skip compare data step if has different columns
-	if same, _ := sameRow(baseColumns, columns); !same {
+	if !sameCols(baseColumns, columns) {
 		mustWriteToCsv(csvFile, columns, schema, dsKey, "DIFF_TABLE", "")
 		return
 	}
 	rowMap := rowResultToMap(rows)
 
-	compareRows(csvFile, dsKey, schema, baseColumns, baseRowMap, rowMap)
+	compareRows(csvFile, dsKey, schema, baseColumns, baseRowMap, rowMap, skipCol)
 }
 
-func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string, baseRowMap map[string][]string, rowMap map[string][]string) {
+func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,
+	baseRowMap map[string][]string, rowMap map[string][]string, skipCol []bool) {
+
 	// Find extra rows or different rows
 	for _, row := range rowMap {
 		baseRow, ok := baseRowMap[row[0]]
@@ -134,7 +153,7 @@ func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseColumns [
 			continue
 		}
 		// Different row
-		if same, diff := sameRow(baseRow, row); !same {
+		if same, diff := sameRow(baseRow, row, skipCol); !same {
 			mustWriteToCsv(csvFile, baseRow, schema, "BASE", "DIFF", "")
 			mustWriteToCsv(csvFile, diff, schema, dsKey, "DIFF", "")
 			continue
@@ -170,7 +189,19 @@ func generateInsertSql(schema string, columns []string, row []string) string {
 	return sb.String()
 }
 
-func sameRow(baseRow, row []string) (bool, []string) {
+func sameCols(baseCols, cols []string) bool {
+	if len(baseCols) != len(cols) {
+		return false
+	}
+	for i, col := range cols {
+		if col != baseCols[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func sameRow(baseRow, row []string, skipCol []bool) (bool, []string) {
 	diffRow := make([]string, len(baseRow))
 	same := true
 	if len(baseRow) != len(row) {
@@ -179,11 +210,11 @@ func sameRow(baseRow, row []string) (bool, []string) {
 		return same, diffRow
 	}
 	for i := range baseRow {
-		if baseRow[i] != row[i] {
+		if baseRow[i] != row[i] && !skipCol[i] {
 			same = false
 			diffRow[i] = row[i]
 		} else {
-			diffRow[i] = "-"
+			diffRow[i] = "SAME"
 		}
 	}
 	return same, diffRow

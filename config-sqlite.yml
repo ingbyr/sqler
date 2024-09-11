@@ -25,3 +25,7 @@ commands:
   bdiff-schemas:
     - a
     - b
+  bdiff-skip-cols:
+    - update_date
+    - create_date
+    - a3

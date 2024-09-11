@@ -69,8 +69,9 @@ func (ds *DataSourceConfig) DsKey() string {
 }
 
 type CommandsConfig struct {
-	CountSchemas []string `yaml:"count-schemas"`
-	BdiffSchemas []string `yaml:"bdiff-schemas"`
+	CountSchemas  []string `yaml:"count-schemas"`
+	BdiffSchemas  []string `yaml:"bdiff-schemas"`
+	BdiffSkipCols []string `yaml:"bdiff-skip-cols"`
 }
 
 func (c *CommandsConfig) AddCountSchema(schema string) {
