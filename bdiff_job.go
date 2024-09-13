@@ -97,6 +97,8 @@ func (job *BdiffJob) DoExec() error {
 				skipCol[i] = true
 			}
 		}
+		// Base row map
+		baseRowMap := rowResultToMap(baseRows)
 
 		// Compare to other db
 		for dbIdx, db := range job.sqler.dbs {
@@ -106,7 +108,6 @@ func (job *BdiffJob) DoExec() error {
 			fmt.Printf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
 				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1)
 			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
-			baseRowMap := rowResultToMap(baseRows)
 			// Compare
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query, skipCol, job.batchRow)
 			csvFile.Flush()
