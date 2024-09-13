@@ -65,7 +65,7 @@ func (job *BdiffJob) DoExec() error {
 		if err != nil {
 			return err
 		}
-		if job.maxRow < rowNumber {
+		if job.maxRow > 0 && job.maxRow < rowNumber {
 			fmt.Printf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n\n", pkg.Now(), schema, rowNumber, job.maxRow)
 			continue
 		}
