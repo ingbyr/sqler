@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"math"
 	"os"
 	"sqler/pkg"
 	"strconv"
@@ -123,6 +124,9 @@ func (job *BdiffJob) SetWrapper(defaultJob *DefaultJob) {
 func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,
 	baseRowMap map[string][]string, db *sql.DB, query string, skipCol []bool, batchRow int) {
 	offset := 0
+	if batchRow == 0 {
+		batchRow = math.MaxInt
+	}
 	for {
 		limitQuery := fmt.Sprintf("%s limit %d offset %d", query, batchRow, offset)
 		// Query target db row data
