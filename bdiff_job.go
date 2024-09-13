@@ -39,6 +39,11 @@ type BdiffJob struct {
 	*DefaultJob
 }
 
+type dataRow struct {
+	cols     []string
+	compared bool
+}
+
 func (job *BdiffJob) DoExec() error {
 	baseDb := job.sqler.dbs[0]
 	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
@@ -122,7 +127,7 @@ func (job *BdiffJob) SetWrapper(defaultJob *DefaultJob) {
 }
 
 func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,
-	baseRowMap map[string][]string, db *sql.DB, query string, skipCol []bool, batchRow int) {
+	baseRowMap map[string]*dataRow, db *sql.DB, query string, skipCol []bool, batchRow int) {
 	offset := 0
 	if batchRow == 0 {
 		batchRow = math.MaxInt
@@ -144,41 +149,42 @@ func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []str
 			return
 		}
 		if len(rows) == 0 {
-			return
+			break
 		}
 		rowMap := rowResultToMap(rows)
-
 		compareRows(csvFile, dsKey, schema, baseColumns, baseRowMap, rowMap, skipCol)
 		offset += batchRow
+	}
+	// Find missing rows
+	for _, baseRow := range baseRowMap {
+		if !baseRow.compared {
+			insertSql := generateInsertSql(schema, baseColumns, baseRow.cols)
+			mustWriteToCsv(csvFile, baseRow.cols, schema, dsKey, "MISSING", insertSql)
+			// Reset row flags
+			baseRow.compared = false
+		}
 	}
 }
 
 func compareRows(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,
-	baseRowMap map[string][]string, rowMap map[string][]string, skipCol []bool) {
+	baseRowMap map[string]*dataRow, rowMap map[string]*dataRow, skipCol []bool) {
 
 	// Find extra rows or different rows
 	for _, row := range rowMap {
-		baseRow, ok := baseRowMap[row[0]]
+		baseRow, ok := baseRowMap[row.cols[0]]
 		// Extra row
 		if !ok {
 			// Insert SQL
-			insertSql := generateInsertSql(schema, baseColumns, row)
-			mustWriteToCsv(csvFile, row, schema, dsKey, "EXTRA", insertSql)
+			insertSql := generateInsertSql(schema, baseColumns, row.cols)
+			mustWriteToCsv(csvFile, row.cols, schema, dsKey, "EXTRA", insertSql)
 			continue
 		}
 		// Different row
-		if same, diff := sameRow(baseRow, row, skipCol); !same {
-			mustWriteToCsv(csvFile, baseRow, schema, "BASE", "DIFF", "")
+		if same, diff := sameRow(baseRow.cols, row.cols, skipCol); !same {
+			mustWriteToCsv(csvFile, baseRow.cols, schema, "BASE", "DIFF", "")
 			mustWriteToCsv(csvFile, diff, schema, dsKey, "DIFF", "")
-			continue
 		}
-	}
-	// Find missing rows
-	for _, baseRow := range baseRowMap {
-		if _, ok := rowMap[baseRow[0]]; !ok {
-			insertSql := generateInsertSql(schema, baseColumns, baseRow)
-			mustWriteToCsv(csvFile, baseRow, schema, dsKey, "MISSING", insertSql)
-		}
+		baseRow.compared = true
 	}
 }
 
@@ -247,11 +253,14 @@ func writeToCsv(csvFile *csv.Writer, data []string, extraHeaders ...string) {
 	}
 }
 
-func rowResultToMap(rows [][]string) map[string][]string {
-	rowMap := make(map[string][]string, len(rows))
+func rowResultToMap(rows [][]string) map[string]*dataRow {
+	rowMap := make(map[string]*dataRow, len(rows))
 	for _, baseRow := range rows {
 		id := baseRow[0]
-		rowMap[id] = baseRow
+		rowMap[id] = &dataRow{
+			cols:     baseRow,
+			compared: false,
+		}
 	}
 	return rowMap
 }
