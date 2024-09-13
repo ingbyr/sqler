@@ -120,6 +120,8 @@ func (job *BdiffJob) DoExec() error {
 		fmt.Printf("[%s] Saved to csv file: %s\n\n", pkg.Now(), csvFileName)
 	}
 
+	fmt.Printf("[%s] All bdiff jobs are done\n", pkg.Now())
+
 	return nil
 }
 
