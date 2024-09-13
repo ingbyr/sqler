@@ -35,6 +35,7 @@ var (
 	flagBdiff        bool
 	flagSchemas      string
 	flagMaxRowNumber int
+	flagBatchRow     int
 )
 
 var (
@@ -55,7 +56,8 @@ func parseFlags() {
 	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
 	flag.BoolVar(&flagBdiff, "bdiff", false, "better diff tool")
 	flag.StringVar(&flagSchemas, "schemas", "", "schema1 schema2 ...")
-	flag.IntVar(&flagMaxRowNumber, "max-row", 10_000, "max row")
+	flag.IntVar(&flagMaxRowNumber, "max-row", 100000, "max row")
+	flag.IntVar(&flagBatchRow, "batch-row", 0, "batch row")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -159,7 +161,7 @@ func cli() {
 		} else {
 			schemas = strings.Split(flagSchemas, " ")
 		}
-		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber)
+		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber, flagBatchRow)
 		jobExecutor := NewJobExecutor(1, jobPrinter)
 		jobExecutor.Start()
 		jobExecutor.Submit(bdiffJob, 0)
