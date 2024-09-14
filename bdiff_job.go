@@ -61,6 +61,7 @@ func (job *BdiffJob) DoExec() error {
 
 		fmt.Printf("[%s] Loading BASE data: %s\n", pkg.Now(), schema)
 		// Skip if too many data
+		_ = baseDb.Ping()
 		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
 		if err != nil {
 			return err
@@ -138,6 +139,7 @@ func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []str
 	for {
 		limitQuery := fmt.Sprintf("%s limit %d offset %d", query, batchRow, offset)
 		// Query target db row data
+		_ = db.Ping()
 		rawRows, err := db.Query(limitQuery)
 		if err != nil {
 			panic(err)
