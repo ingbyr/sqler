@@ -45,10 +45,10 @@ type dataRow struct {
 }
 
 func (job *BdiffJob) DoExec() error {
-	baseDb := job.sqler.dbs[0]
 	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
+	baseDb := job.sqler.dbs[0]
 	// Compare schemas
 	for sid, schema := range job.schemas {
 		// csv file

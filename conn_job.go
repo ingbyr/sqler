@@ -41,6 +41,8 @@ func (job *ConnJob) DoExec() error {
 	if err != nil {
 		return err
 	}
+	db.SetConnMaxLifetime(0)
+	db.SetConnMaxIdleTime(0)
 	job.sqler.dbs[job.Idx] = db
 	return nil
 }

@@ -12,6 +12,7 @@ type Sqler struct {
 	dbs         []*sql.DB
 	tableMetas  []*TableMeta
 	columnMeats []*ColumnMeta
+	printer     *JobPrinter
 	jobExecutor *JobExecutor
 }
 
@@ -33,21 +34,26 @@ func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
 		dbs:         make([]*sql.DB, len(cfg.DataSources)),
 		tableMetas:  make([]*TableMeta, 0, 32),
 		columnMeats: make([]*ColumnMeta, 0, 128),
+		printer:     jobPrinter,
 		jobExecutor: NewJobExecutor(len(cfg.DataSources), printer),
 	}
 
 	// Init db and stmt job chan
-	jobExecutor := NewJobExecutor(len(s.dbs), printer)
+	s.ConnectToDb()
+
+	// Start sql job
+	s.jobExecutor.Start()
+	return s
+}
+
+func (s *Sqler) ConnectToDb() {
+	jobExecutor := NewJobExecutor(len(s.dbs), s.printer)
 	jobExecutor.Start()
 	for dbID := 0; dbID < len(s.dbs); dbID++ {
 		connJob := NewConnJob(dbID, s)
 		jobExecutor.Submit(connJob, dbID)
 	}
 	jobExecutor.Shutdown(true)
-
-	// Start sql job
-	s.jobExecutor.Start()
-	return s
 }
 
 // ExecSerial executes sql in turn (each sql and database)
