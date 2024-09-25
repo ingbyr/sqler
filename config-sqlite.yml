@@ -4,19 +4,19 @@ dataSources:
     url:
     schema: db_base
     username: root
-    password: root
+    password: ENC(c1424388)
     enabled: true
   - type: sqlite3
     url:
     schema: db_01
     username: root
-    password: root
+    password: ENC(c1424388)
     enabled: true
   - type: sqlite3
     url:
     schema: db_02
     username: root
-    password: root
+    password: ENC(c1424388)
     enabled: true
 commands:
   count-schemas:

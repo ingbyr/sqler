@@ -29,9 +29,8 @@ var (
 	flagVersion      bool
 	flagEnc          string
 	flagDec          string
-	flagCryptoKey    string
-	flagGenCryptoKey string
-	flagHex          bool
+	flagGenHexAesKey bool
+	flagHexAesKey    string
 	flagBdiff        bool
 	flagSchemas      string
 	flagMaxRowNumber int
@@ -51,9 +50,8 @@ func parseFlags() {
 	flag.BoolVar(&flagVersion, "v", false, "(version) 版本号")
 	flag.StringVar(&flagEnc, "enc", "", "(enc) aes加密")
 	flag.StringVar(&flagDec, "dec", "", "(dec) aes解密")
-	flag.StringVar(&flagCryptoKey, "key", "aes.key", "(key) aes密钥")
-	flag.StringVar(&flagGenCryptoKey, "gen-key", "", "(generate key) 生成aes密钥")
-	flag.BoolVar(&flagHex, "hex", false, "(hex) hex string")
+	flag.BoolVar(&flagGenHexAesKey, "gen-key", false, "(generate key) 生成16进制的aes密钥")
+	flag.StringVar(&flagHexAesKey, "key", "", "(key) hex aes key")
 	flag.BoolVar(&flagBdiff, "bdiff", false, "better diff tool")
 	flag.StringVar(&flagSchemas, "schemas", "", "schema1 schema2 ...")
 	flag.IntVar(&flagMaxRowNumber, "max-row", 100000, "max row")
@@ -81,10 +79,7 @@ func initSqler(override bool) {
 		}
 	}()
 	if sqler == nil || override {
-		key, err := loadAesKey()
-		if err != nil {
-			panic(err)
-		}
+		key := loadAesKey()
 		cfg, err := pkg.LoadConfigFromFile(configFile, pkg.NewAes(key, pkg.DefaultIV))
 		if err != nil {
 			panic(err)
@@ -118,10 +113,7 @@ func cli() {
 	}
 
 	if flagEnc != "" {
-		key, err := loadAesKey()
-		if err != nil {
-			panic(err)
-		}
+		key := loadAesKey()
 		aes := pkg.NewAes(key, []byte(""))
 		hex := aes.EncAsHex(flagEnc)
 		fmt.Println(hex)
@@ -129,27 +121,20 @@ func cli() {
 	}
 
 	if flagDec != "" {
-		key, err := loadAesKey()
-		if err != nil {
-			panic(err)
-		}
+		key := loadAesKey()
 		aes := pkg.NewAes(key, []byte(""))
 		data := aes.DecAsStr(flagDec)
 		fmt.Println(data)
 		os.Exit(0)
 	}
 
-	if flagGenCryptoKey != "" {
+	if flagGenHexAesKey {
 		bytes := make([]byte, 16)
 		_, err := rand.Read(bytes)
 		if err != nil {
 			panic(err)
 		}
-		if flagHex {
-			fmt.Println(hex.EncodeToString(bytes))
-		} else {
-			os.WriteFile(flagGenCryptoKey, bytes, 0666)
-		}
+		fmt.Println(hex.EncodeToString(bytes))
 		os.Exit(0)
 	}
 
@@ -191,11 +176,25 @@ func cli() {
 	}
 }
 
-func loadAesKey() ([]byte, error) {
-	if flagHex {
-		return hex.DecodeString(flagCryptoKey)
+func loadAesKey() []byte {
+	hexAesKey := ""
+	if flagHexAesKey != "" {
+		hexAesKey = flagHexAesKey
+	} else {
+		hexAesKey = os.Getenv("SQLER_CFG_AES_KEY")
+		if hexAesKey == "" {
+			fmt.Println("Please set env variable 'SQLER_CFG_AES_KEY' or pass '-key HEX-AES-KEY'")
+			os.Exit(1)
+		}
 	}
-	return os.ReadFile(flagCryptoKey)
+	aesKey, err := hex.DecodeString(hexAesKey)
+	if err != nil {
+		panic(err)
+	}
+	if len(aesKey) != 16 {
+		panic("Not valid aes key: " + hexAesKey)
+	}
+	return aesKey
 }
 
 func currentPrefix() string {
