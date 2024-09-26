@@ -242,6 +242,10 @@ func sameRow(baseRow, row []string, skipCol []bool) (bool, []string) {
 			diffRow[i] = "/"
 		}
 	}
+	if !same {
+		// Record id column
+		diffRow[0] = row[0]
+	}
 	return same, diffRow
 }
 

@@ -3,6 +3,9 @@
     <module name="sqler" />
     <working_directory value="$PROJECT_DIR$" />
     <parameters value="-c config-sqlite.yml -bdiff -max-row 100 -batch-row 2" />
+    <envs>
+      <env name="SQLER_CFG_AES_KEY" value="796debf8ad7b70607091ee08c8b27ff4" />
+    </envs>
     <kind value="PACKAGE" />
     <package value="sqler" />
     <directory value="$PROJECT_DIR$" />
