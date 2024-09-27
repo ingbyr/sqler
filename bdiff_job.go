@@ -59,7 +59,7 @@ func (job *BdiffJob) DoExec() error {
 		}
 		csvFile := csv.NewWriter(file)
 
-		fmt.Printf("[%s] Loading BASE data: %s\n", pkg.Now(), schema)
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Loading BASE data: %s", pkg.Now(), schema))
 		// Skip if too many data
 		_ = baseDb.Ping()
 		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
@@ -75,7 +75,7 @@ func (job *BdiffJob) DoExec() error {
 			return err
 		}
 		if job.maxRow > 0 && job.maxRow < rowNumber {
-			fmt.Printf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n\n", pkg.Now(), schema, rowNumber, job.maxRow)
+			comPrinter.PrintInfo(fmt.Sprintf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n", pkg.Now(), schema, rowNumber, job.maxRow))
 			continue
 		}
 
@@ -106,22 +106,23 @@ func (job *BdiffJob) DoExec() error {
 			if dbIdx == 0 {
 				continue
 			}
-			fmt.Printf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
-				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1)
+			comPrinter.PrintInfo(fmt.Sprintf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
+				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1))
 			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
 			// Compare
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query, skipCol, job.batchRow)
 			csvFile.Flush()
-			fmt.Printf("Done\n")
+			comPrinter.PrintInfo(fmt.Sprintf("[%s] Compared table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
+				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1))
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
 			return err
 		}
-		fmt.Printf("[%s] Saved to csv file: %s\n\n", pkg.Now(), csvFileName)
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Saved to csv file: %s\n", pkg.Now(), csvFileName))
 	}
 
-	fmt.Printf("[%s] All bdiff jobs are done\n", pkg.Now())
+	comPrinter.PrintInfo(fmt.Sprintf("[%s] All bdiff jobs are done", pkg.Now()))
 
 	return nil
 }

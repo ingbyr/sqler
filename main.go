@@ -39,7 +39,7 @@ var (
 
 var (
 	sqler        *Sqler
-	jobPrinter   *JobPrinter
+	comPrinter   *CompositedPrinter
 	sqlStmtCache *strings.Builder
 )
 
@@ -66,8 +66,8 @@ func initComponents() {
 }
 
 func initJobPrinter(override bool) {
-	if jobPrinter == nil || override {
-		jobPrinter = NewJobPrinter()
+	if comPrinter == nil || override {
+		comPrinter = NewJobPrinter()
 	}
 }
 
@@ -84,7 +84,7 @@ func initSqler(override bool) {
 		if err != nil {
 			panic(err)
 		}
-		sqler = NewSqler(cfg, jobPrinter)
+		sqler = NewSqler(cfg, comPrinter)
 		if err := sqler.loadSchema(); err != nil {
 			fmt.Println("Failed to load schema: " + err.Error())
 		}
@@ -108,7 +108,7 @@ func cli() {
 	if flagSqlFile != "" {
 		doActions = true
 		initComponents()
-		jobPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
+		comPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
 	}
 
@@ -147,10 +147,11 @@ func cli() {
 			schemas = strings.Split(flagSchemas, " ")
 		}
 		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber, flagBatchRow)
-		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor := NewJobExecutor(1, comPrinter)
 		jobExecutor.Start()
 		jobExecutor.Submit(bdiffJob, 0)
 		jobExecutor.Shutdown(true)
+		//comPrinter.WaitForNoJob(true)
 		return
 	}
 
@@ -165,7 +166,7 @@ func cli() {
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				jobPrinter.LogInfo(currentPrefix() + document.Text)
+				comPrinter.LogInfo(currentPrefix() + document.Text)
 			}),
 		)
 		p.Run()
@@ -228,7 +229,7 @@ func executor(line string) {
 				ds.Url, ds.Schema, strconv.FormatBool(ds.Enabled)})
 		}
 		table.Render()
-		jobPrinter.PrintInfo(b.String())
+		comPrinter.PrintInfo(b.String())
 		return
 	}
 
@@ -240,7 +241,7 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdActive) {
 		configFiles := strings.Split(line, " ")[1:]
 		if len(configFiles) != 1 {
-			jobPrinter.PrintInfo("args 0 must be one string")
+			comPrinter.PrintInfo("args 0 must be one string")
 			return
 		}
 		configFile = configFiles[0]
@@ -254,7 +255,7 @@ func executor(line string) {
 			schemas = sqler.cfg.CommandsConfig.CountSchemas
 		}
 		countJob := NewCountJob(sqler, schemas)
-		jobExecutor := NewJobExecutor(1, jobPrinter)
+		jobExecutor := NewJobExecutor(1, comPrinter)
 		jobExecutor.Start()
 		jobExecutor.Submit(countJob, 0)
 		jobExecutor.Shutdown(true)
@@ -264,12 +265,12 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
 		parts := splitBySpacesWithQuotes(line)
 		if len(parts) != 3 {
-			jobPrinter.PrintInfo("Invalid args")
+			comPrinter.PrintInfo("Invalid args")
 			return
 		}
 		csvFileName := parts[1]
 		if !strings.HasSuffix(csvFileName, ".csv") {
-			jobPrinter.PrintInfo("File name must end with csv")
+			comPrinter.PrintInfo("File name must end with csv")
 			return
 		}
 		csvFile, err := os.OpenFile(csvFileName, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)

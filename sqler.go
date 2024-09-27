@@ -12,7 +12,7 @@ type Sqler struct {
 	dbs         []*sql.DB
 	tableMetas  []*TableMeta
 	columnMeats []*ColumnMeta
-	printer     *JobPrinter
+	printer     *CompositedPrinter
 	jobExecutor *JobExecutor
 }
 
@@ -27,14 +27,14 @@ type ColumnMeta struct {
 	Type    string
 }
 
-func NewSqler(cfg *pkg.Config, printer *JobPrinter) *Sqler {
+func NewSqler(cfg *pkg.Config, printer *CompositedPrinter) *Sqler {
 	s := &Sqler{
 		ctx:         context.Background(),
 		cfg:         cfg,
 		dbs:         make([]*sql.DB, len(cfg.DataSources)),
 		tableMetas:  make([]*TableMeta, 0, 32),
 		columnMeats: make([]*ColumnMeta, 0, 128),
-		printer:     jobPrinter,
+		printer:     comPrinter,
 		jobExecutor: NewJobExecutor(len(cfg.DataSources), printer),
 	}
 

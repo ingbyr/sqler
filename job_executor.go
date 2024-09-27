@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 )
 
-func NewJobExecutor(jobGroupSize int, printer *JobPrinter) *JobExecutor {
+func NewJobExecutor(jobGroupSize int, printer *CompositedPrinter) *JobExecutor {
 	return NewJobExecutorWithCache(jobGroupSize, 1, printer)
 }
 
-func NewJobExecutorWithCache(jobGroupSize int, cacheSize int, printer *JobPrinter) *JobExecutor {
+func NewJobExecutorWithCache(jobGroupSize int, cacheSize int, printer *CompositedPrinter) *JobExecutor {
 	if jobGroupSize <= 0 || jobGroupSize > 1024 {
 		panic("Job group size must in [1, 1024]")
 	}
@@ -32,7 +32,7 @@ type JobExecutor struct {
 	jobGroup   []chan Job
 	ctx        context.Context
 	cancel     context.CancelFunc
-	printer    *JobPrinter
+	printer    *CompositedPrinter
 	totalJobWg *sync.WaitGroup
 	hasError   atomic.Bool
 }
@@ -54,7 +54,7 @@ func (e *JobExecutor) Submit(job Job, jobGroupId int) {
 
 func (e *JobExecutor) WaitForNoRemainJob() {
 	e.totalJobWg.Wait()
-	e.printer.WaitForNoJob()
+	e.printer.WaitForNoJob(true)
 }
 
 func (e *JobExecutor) Shutdown(wait bool) {
