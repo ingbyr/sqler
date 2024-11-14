@@ -12,12 +12,12 @@ const (
 
 func CommandSuggests() [][]string {
 	return [][]string{
-		{CmdDatasource, "Show current data sources"},
-		{CmdSource, "Source sql files"},
-		{CmdClear, "Clear sql"},
-		{CmdActive, "Active config file"},
-		{CmdCount, "Count data in schema"},
-		{CmdExportCsv, "Export data to csv file (foo.csv \"select 1 from dual\" / foo.csv file.sql)"},
-		{CmdLog, "Show log file path"},
+		{CmdDatasource, "显示当前数据源"},
+		{CmdSource, "执行SQL文件内的SQL（foo.sql）"},
+		{CmdClear, "清除当前输入的部分SQL"},
+		{CmdActive, "激活其他配置文件（当前版本不可用）"},
+		{CmdCount, "查询表中数据行数，不指定参数则从配置中读取（table_1 table_2 ... ）"},
+		{CmdExportCsv, "导出SQL执行结构到CSV文件 (foo.csv \"select 1 from dual\" 或 foo.csv file.sql)"},
+		{CmdLog, "显示当前日志路径"},
 	}
 }
