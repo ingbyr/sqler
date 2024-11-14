@@ -278,7 +278,21 @@ func executor(line string) {
 			panic(err)
 		}
 		defer csvFile.Close()
-		sqlStmt, _ := strings.CutSuffix(parts[2], ";")
+		var sqlStmt string
+		if strings.HasSuffix(parts[2], ".sql") {
+			sqlFile, err := os.Open(parts[2])
+			if err != nil {
+				panic(err)
+			}
+			stmts := LoadStmtsFromFile(sqlFile)
+			if len(stmts) != 1 {
+				comPrinter.PrintInfo("Only support 1 sql in file")
+				return
+			}
+			sqlStmt = stmts[0]
+		} else {
+			sqlStmt, _ = strings.CutSuffix(parts[2], ";")
+		}
 		sqlJobCtx := &SqlJobCtx{
 			StopWhenError:      false,
 			Serial:             true,
