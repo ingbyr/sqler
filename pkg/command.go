@@ -7,6 +7,7 @@ const (
 	CmdActive     = "/active"
 	CmdCount      = "/count"
 	CmdExportCsv  = "/export-csv"
+	CmdLog        = "/log"
 )
 
 func CommandSuggests() [][]string {
@@ -17,5 +18,6 @@ func CommandSuggests() [][]string {
 		{CmdActive, "Active config file"},
 		{CmdCount, "Count data in schema"},
 		{CmdExportCsv, "Export data to csv file (csv-file-name \"select 1 from dual\" or file.sql)"},
+		{CmdLog, "Show log file path"},
 	}
 }

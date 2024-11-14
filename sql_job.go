@@ -57,9 +57,9 @@ func (job *SqlJob) DoExec() error {
 	// Export data to csv if necessary
 	if job.ExportCsv {
 		dsKey := job.DsCfg.DsKey()
-		comPrinter.PrintInfo(fmt.Sprintf("Exporting %s to CSV ... \n", dsKey))
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", dsKey, job.CsvFileName))
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
-		comPrinter.PrintInfo(fmt.Sprintf("Exported %s to CSV\n", dsKey))
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Done", dsKey))
 		job.printable = false
 		return nil
 	}

@@ -297,10 +297,16 @@ func executor(line string) {
 			StopWhenError:      false,
 			Serial:             true,
 			ExportCsv:          true,
+			CsvFileName:        csvFileName,
 			CsvFile:            csv.NewWriter(csvFile),
 			CsvFileHeaderWrote: false,
 		}
 		execSql(sqlJobCtx, sqlStmt)
+		return
+	}
+
+	if strings.HasPrefix(line, pkg.CmdLog) {
+		comPrinter.PrintInfo(comPrinter.f.Name() + "\n")
 		return
 	}
 

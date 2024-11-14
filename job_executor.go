@@ -54,7 +54,7 @@ func (e *JobExecutor) Submit(job Job, jobGroupId int) {
 
 func (e *JobExecutor) WaitForNoRemainJob() {
 	e.totalJobWg.Wait()
-	e.printer.WaitForNoJob(true)
+	e.printer.WaitForNoJob()
 }
 
 func (e *JobExecutor) Shutdown(wait bool) {

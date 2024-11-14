@@ -36,11 +36,8 @@ func NewJobPrinter() *CompositedPrinter {
 	return p
 }
 
-func (printer *CompositedPrinter) WaitForNoJob(printLogPath bool) {
+func (printer *CompositedPrinter) WaitForNoJob() {
 	printer.wg.Wait()
-	if printLogPath {
-		fmt.Printf("Log saved to %s\n", printer.f.Name())
-	}
 }
 
 func (printer *CompositedPrinter) Print(job Job) {
