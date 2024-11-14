@@ -17,7 +17,7 @@ func CommandSuggests() [][]string {
 		{CmdClear, "Clear sql"},
 		{CmdActive, "Active config file"},
 		{CmdCount, "Count data in schema"},
-		{CmdExportCsv, "Export data to csv file (csv-file-name \"select 1 from dual\" or file.sql)"},
+		{CmdExportCsv, "Export data to csv file (foo.csv \"select 1 from dual\" / foo.csv file.sql)"},
 		{CmdLog, "Show log file path"},
 	}
 }
