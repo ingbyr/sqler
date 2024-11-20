@@ -360,11 +360,11 @@ func sourceSqlFiles(files []string) {
 	}
 }
 
-func execSql(opts *SqlJobCtx, sqlStmt ...string) {
-	if opts.Serial {
-		sqler.ExecSerial(opts, sqlStmt...)
+func execSql(jobCtx *SqlJobCtx, sqlStmt ...string) {
+	if jobCtx.Serial {
+		sqler.ExecSerial(jobCtx, sqlStmt...)
 	} else {
-		sqler.ExecPara(opts, sqlStmt...)
+		sqler.ExecPara(jobCtx, sqlStmt...)
 	}
 }
 

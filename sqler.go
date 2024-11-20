@@ -57,13 +57,13 @@ func (s *Sqler) ConnectToDb() {
 }
 
 // ExecSerial executes sql in turn (each sql and database)
-func (s *Sqler) ExecSerial(opts *SqlJobCtx, stmts ...string) {
+func (s *Sqler) ExecSerial(jobCtx *SqlJobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
 		for dbId := range s.dbs {
 			jobId++
-			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], opts)
+			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], jobCtx)
 			s.jobExecutor.Submit(job, dbId)
 			s.jobExecutor.WaitForNoRemainJob()
 		}
@@ -71,17 +71,17 @@ func (s *Sqler) ExecSerial(opts *SqlJobCtx, stmts ...string) {
 }
 
 // ExecPara executes sql in parallel (each database)
-func (s *Sqler) ExecPara(opts *SqlJobCtx, stmts ...string) {
+func (s *Sqler) ExecPara(jobCtx *SqlJobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
 		for dbId := range s.dbs {
 			jobId++
-			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], opts)
+			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], jobCtx)
 			s.jobExecutor.Submit(job, dbId)
 		}
 		s.jobExecutor.WaitForNoRemainJob()
-		if opts.StopWhenError && s.jobExecutor.HasAnyError() {
+		if jobCtx.StopWhenError && s.jobExecutor.HasAnyError() {
 			return
 		}
 	}

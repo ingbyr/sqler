@@ -19,11 +19,11 @@ type SqlJob struct {
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
-	*SqlJobCtx
+	ctx               *SqlJobCtx
 	*DefaultJob
 }
 
-func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, opts *SqlJobCtx) Job {
+func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, jobCtx *SqlJobCtx) Job {
 	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
 	stmt, useVerticalResult := parseStmt(stmt)
 	job := &SqlJob{
@@ -32,7 +32,7 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 		DsCfg:             dsCfg,
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
-		SqlJobCtx:         opts,
+		ctx:               jobCtx,
 	}
 	return WrapJob(job)
 }
@@ -55,8 +55,8 @@ func (job *SqlJob) DoExec() error {
 	}
 
 	// Export data to csv if necessary
-	if job.ExportCsv {
-		comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.CsvFileName))
+	if job.ctx.ExportCsv {
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
 		job.printable = false
 		return nil
@@ -117,17 +117,17 @@ func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns []
 }
 
 func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
-	job.CsvFileLock.Lock()
-	defer job.CsvFileLock.Unlock()
-	if !job.CsvFileHeaderWrote {
-		job.CsvFile.Write(append(headers, "Data Source"))
-		job.CsvFileHeaderWrote = true
+	job.ctx.CsvFileLock.Lock()
+	defer job.ctx.CsvFileLock.Unlock()
+	if !job.ctx.CsvFileHeaderWrote {
+		job.ctx.CsvFile.Write(append(headers, "Data Source"))
+		job.ctx.CsvFileHeaderWrote = true
 	}
 	for _, row := range rows {
-		job.CsvFile.Write(append(row, job.DsCfg.DsKey()))
+		job.ctx.CsvFile.Write(append(row, job.DsCfg.DsKey()))
 	}
-	job.CsvFile.Flush()
-	comPrinter.PrintInfo(fmt.Sprintf("[%s] Done", job.DsCfg.DsKey()))
+	job.ctx.CsvFile.Flush()
+	comPrinter.PrintInfo(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 }
 
 func parseStmt(stmt string) (string, bool) {
