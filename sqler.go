@@ -27,15 +27,14 @@ type ColumnMeta struct {
 	Type    string
 }
 
-func NewSqler(cfg *pkg.Config, printer *CompositedPrinter) *Sqler {
+func NewSqler(cfg *pkg.Config) *Sqler {
 	s := &Sqler{
 		ctx:         context.Background(),
 		cfg:         cfg,
 		dbs:         make([]*sql.DB, len(cfg.DataSources)),
 		tableMetas:  make([]*TableMeta, 0, 32),
 		columnMeats: make([]*ColumnMeta, 0, 128),
-		printer:     printer,
-		jobExecutor: NewJobExecutor(len(cfg.DataSources), printer),
+		jobExecutor: NewJobExecutor(len(cfg.DataSources)),
 	}
 
 	// Init db and stmt job chan
@@ -47,7 +46,7 @@ func NewSqler(cfg *pkg.Config, printer *CompositedPrinter) *Sqler {
 }
 
 func (s *Sqler) ConnectToDb() {
-	jobExecutor := NewJobExecutor(len(s.dbs), s.printer)
+	jobExecutor := NewJobExecutor(len(s.dbs))
 	jobExecutor.Start()
 	for idx := 0; idx < len(s.dbs); idx++ {
 		connJob := NewConnJob(s, idx)
@@ -57,7 +56,7 @@ func (s *Sqler) ConnectToDb() {
 }
 
 // ExecSerial executes sql in turn (each sql and database)
-func (s *Sqler) ExecSerial(jobCtx *SqlJobCtx, stmts ...string) {
+func (s *Sqler) ExecSerial(jobCtx *JobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
@@ -71,7 +70,7 @@ func (s *Sqler) ExecSerial(jobCtx *SqlJobCtx, stmts ...string) {
 }
 
 // ExecPara executes sql in parallel (each database)
-func (s *Sqler) ExecPara(jobCtx *SqlJobCtx, stmts ...string) {
+func (s *Sqler) ExecPara(jobCtx *JobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {

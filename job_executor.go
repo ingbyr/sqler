@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 )
 
-func NewJobExecutor(jobGroupSize int, printer *CompositedPrinter) *JobExecutor {
-	return NewJobExecutorWithCache(jobGroupSize, 1, printer)
+func NewJobExecutor(jobGroupSize int) *JobExecutor {
+	return NewJobExecutorWithCache(jobGroupSize, 1)
 }
 
-func NewJobExecutorWithCache(jobGroupSize int, cacheSize int, printer *CompositedPrinter) *JobExecutor {
+func NewJobExecutorWithCache(jobGroupSize int, cacheSize int) *JobExecutor {
 	if jobGroupSize <= 0 || jobGroupSize > 1024 {
 		panic("Job group size must in [1, 1024]")
 	}
@@ -24,7 +24,6 @@ func NewJobExecutorWithCache(jobGroupSize int, cacheSize int, printer *Composite
 		doneJobCh:  make(chan Job, 16),
 		ctx:        ctx,
 		cancel:     cancelFunc,
-		printer:    printer,
 		jobWg:      new(sync.WaitGroup),
 		doneJobWg:  new(sync.WaitGroup),
 	}

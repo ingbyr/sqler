@@ -23,7 +23,7 @@ type CompositedPrinter struct {
 	wg *sync.WaitGroup
 }
 
-func NewJobPrinter() *CompositedPrinter {
+func NewPrinter() *CompositedPrinter {
 	err := os.Mkdir("log", os.ModePerm)
 	if err != nil && !os.IsExist(err) {
 		panic(err)

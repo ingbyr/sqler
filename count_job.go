@@ -11,7 +11,7 @@ func NewCountJob(sqler *Sqler, schemas []string) Job {
 	return &CountJob{
 		sqler:   sqler,
 		schemas: schemas,
-		BaseJob: NewBaseJob(NewSqlJobCtx(sqler.printer)),
+		BaseJob: NewBaseJob(new(JobCtx)),
 	}
 }
 

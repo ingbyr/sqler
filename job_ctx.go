@@ -6,9 +6,8 @@ import (
 	"sync"
 )
 
-type SqlJobCtx struct {
+type JobCtx struct {
 	ctx                context.Context
-	Printer            *CompositedPrinter
 	Serial             bool
 	StopWhenError      bool
 	ExportCsv          bool
@@ -16,11 +15,4 @@ type SqlJobCtx struct {
 	CsvFile            *csv.Writer
 	CsvFileHeaderWrote bool
 	CsvFileLock        *sync.Mutex
-}
-
-func NewSqlJobCtx(printer *CompositedPrinter) *SqlJobCtx {
-	return &SqlJobCtx{
-		ctx:     context.Background(),
-		Printer: printer,
-	}
 }

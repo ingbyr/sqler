@@ -25,7 +25,7 @@ func NewBdiffJob(sqler *Sqler, schemas []string, maxRow int, batchRow int) Job {
 		maxRow:      maxRow,
 		skipColsMap: skipColsMap,
 		batchRow:    batchRow,
-		BaseJob:     NewBaseJob(NewSqlJobCtx(sqler.printer)),
+		BaseJob:     NewBaseJob(new(JobCtx)),
 	}
 }
 

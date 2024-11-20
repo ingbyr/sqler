@@ -19,7 +19,7 @@ type Job interface {
 	PrintAfterDone(msg string)
 }
 
-func NewBaseJob(ctx *SqlJobCtx) *BaseJob {
+func NewBaseJob(ctx *JobCtx) *BaseJob {
 	b := &BaseJob{
 		ctx:    ctx,
 		result: new(bytes.Buffer),
@@ -33,14 +33,14 @@ func NewBaseJob(ctx *SqlJobCtx) *BaseJob {
 var _ Job = (*BaseJob)(nil)
 
 type BaseJob struct {
-	ctx    *SqlJobCtx
+	ctx    *JobCtx
 	result *bytes.Buffer
 	wg     *sync.WaitGroup
 	err    error
 }
 
 func (b *BaseJob) PrintNow(msg string) {
-	b.ctx.Printer.Info(msg)
+	printer.Info(msg)
 }
 
 func (b *BaseJob) PrintAfterDone(msg string) {
@@ -57,7 +57,7 @@ func (b *BaseJob) AfterExec() {
 }
 
 func (b *BaseJob) AfterDone() {
-	b.ctx.Printer.Info(b.result.String())
+	printer.Info(b.result.String())
 }
 
 func (b *BaseJob) Exec() error {

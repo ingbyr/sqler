@@ -19,11 +19,11 @@ type SqlJob struct {
 	Prefix            string
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
-	ctx               *SqlJobCtx
+	ctx               *JobCtx
 	*BaseJob
 }
 
-func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, jobCtx *SqlJobCtx) Job {
+func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, jobCtx *JobCtx) Job {
 	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
 	stmt, useVerticalResult := parseStmt(stmt)
 	return &SqlJob{
@@ -33,7 +33,7 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
 		ctx:               jobCtx,
-		BaseJob:           NewBaseJob(NewSqlJobCtx(sqler.printer)),
+		BaseJob:           NewBaseJob(new(JobCtx)),
 	}
 }
 

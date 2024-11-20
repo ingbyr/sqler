@@ -20,7 +20,7 @@ func NewConnJob(sqler *Sqler, dbId int) Job {
 	return &ConnJob{
 		dbId:    dbId,
 		sqler:   sqler,
-		BaseJob: NewBaseJob(NewSqlJobCtx(sqler.printer)),
+		BaseJob: NewBaseJob(new(JobCtx)),
 	}
 }
 

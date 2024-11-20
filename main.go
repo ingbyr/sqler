@@ -72,7 +72,7 @@ func initComponents() {
 
 func initJobPrinter(override bool) {
 	if printer == nil || override {
-		printer = NewJobPrinter()
+		printer = NewPrinter()
 	}
 }
 
@@ -89,7 +89,7 @@ func initSqler(override bool) {
 		if err != nil {
 			panic(err)
 		}
-		sqler = NewSqler(cfg, printer)
+		sqler = NewSqler(cfg)
 		if err := sqler.loadSchema(); err != nil {
 			fmt.Println("Failed to load schema: " + err.Error())
 		}
@@ -115,7 +115,7 @@ func cli() {
 		initComponents()
 		printer.Info(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		if flagOutputFile == "" {
-			execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
+			execSql(&JobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
 		} else {
 			if !strings.HasSuffix(flagOutputFile, ".csv") {
 				printer.Info("Output file must be csv file")
@@ -127,7 +127,7 @@ func cli() {
 			}
 			defer csvFile.Close()
 			execSql(
-				&SqlJobCtx{
+				&JobCtx{
 					StopWhenError:      false,
 					Serial:             !flagPara,
 					ExportCsv:          true,
@@ -175,7 +175,7 @@ func cli() {
 			schemas = strings.Split(flagSchemas, " ")
 		}
 		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber, flagBatchRow)
-		jobExecutor := NewJobExecutor(1, printer)
+		jobExecutor := NewJobExecutor(1)
 		jobExecutor.Start()
 		jobExecutor.Submit(bdiffJob, 0)
 		jobExecutor.Shutdown(true)
@@ -283,7 +283,7 @@ func executor(line string) {
 			schemas = sqler.cfg.CommandsConfig.CountSchemas
 		}
 		countJob := NewCountJob(sqler, schemas)
-		jobExecutor := NewJobExecutor(1, printer)
+		jobExecutor := NewJobExecutor(1)
 		jobExecutor.Start()
 		jobExecutor.Submit(countJob, 0)
 		jobExecutor.Shutdown(true)
@@ -321,7 +321,7 @@ func executor(line string) {
 		} else {
 			sqlStmt, _ = strings.CutSuffix(parts[2], ";")
 		}
-		sqlJobCtx := &SqlJobCtx{
+		sqlJobCtx := &JobCtx{
 			StopWhenError:      false,
 			Serial:             false,
 			ExportCsv:          true,
@@ -346,9 +346,8 @@ func executor(line string) {
 	sqlStmtCache.WriteString(line)
 	if executable {
 		execSql(
-			&SqlJobCtx{
+			&JobCtx{
 				StopWhenError: false,
-				Printer:       sqler.printer,
 			},
 			sqlStmtCache.String())
 		sqlStmtCache = new(strings.Builder)
@@ -360,11 +359,11 @@ func sourceSqlFiles(files []string) {
 		return
 	}
 	for _, file := range files {
-		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(file)...)
+		execSql(&JobCtx{StopWhenError: true}, LoadSqlFile(file)...)
 	}
 }
 
-func execSql(jobCtx *SqlJobCtx, sqlStmt ...string) {
+func execSql(jobCtx *JobCtx, sqlStmt ...string) {
 	if jobCtx.Serial {
 		sqler.ExecSerial(jobCtx, sqlStmt...)
 	} else {
