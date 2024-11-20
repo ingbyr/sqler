@@ -118,7 +118,7 @@ func cli() {
 			execSql(&JobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
 		} else {
 			if !strings.HasSuffix(flagOutputFile, ".csv") {
-				printer.Info("Output file must be csv file")
+				printer.Info("AfterDoneOutput file must be csv file")
 				return
 			}
 			csvFile, err := os.OpenFile(flagOutputFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -278,11 +278,21 @@ func executor(line string) {
 	}
 
 	if strings.HasPrefix(line, pkg.CmdCount) {
-		schemas := strings.Split(line, " ")[1:]
-		if len(schemas) == 0 {
-			schemas = sqler.cfg.CommandsConfig.CountSchemas
+		parts := strings.Split(line, " ")[1:]
+		if len(parts) < 1 {
+			printer.Info("Please provide csv file name")
+			return
 		}
-		countJob := NewCountJob(sqler, schemas)
+		csvFileName := parts[0]
+		if !strings.HasSuffix(csvFileName, ".csv") {
+			printer.Info("File name must end with .csv")
+			return
+		}
+		schemes := parts[1:]
+		if len(schemes) == 0 {
+			parts = sqler.cfg.CommandsConfig.CountSchemas
+		}
+		countJob := NewCountJob(sqler, csvFileName, schemes)
 		jobExecutor := NewJobExecutor(1)
 		jobExecutor.Start()
 		jobExecutor.Submit(countJob, 0)

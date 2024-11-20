@@ -7,30 +7,32 @@ import (
 	"os"
 )
 
-func NewCountJob(sqler *Sqler, schemas []string) Job {
+func NewCountJob(sqler *Sqler, csvFileName string, schemas []string) Job {
 	return &CountJob{
-		sqler:   sqler,
-		schemas: schemas,
-		BaseJob: NewBaseJob(new(JobCtx)),
+		sqler:       sqler,
+		csvFileName: csvFileName,
+		schemas:     schemas,
+		BaseJob:     NewBaseJob(new(JobCtx)),
 	}
 }
 
 type CountJob struct {
-	sqler   *Sqler
-	schemas []string
+	sqler       *Sqler
+	csvFileName string
+	schemas     []string
 	*BaseJob
 }
 
-func (c *CountJob) Exec() error {
+func (job *CountJob) Exec() error {
 	// ds - ds - count
 	schemaDsCountMap := make(map[string]map[string]string)
-	for _, schema := range c.schemas {
+	for _, schema := range job.schemas {
 		schemaDsCountMap[schema] = make(map[string]string)
 	}
 	errs := make([]error, 0)
 	for dbID, db := range sqler.dbs {
 		ds := sqler.cfg.DataSources[dbID]
-		for _, schema := range c.schemas {
+		for _, schema := range job.schemas {
 			cntQuery := "select count(*) from " + schema
 			results, err := db.Query(cntQuery)
 			if err != nil {
@@ -52,23 +54,23 @@ func (c *CountJob) Exec() error {
 	}
 
 	// Csv
-	file, err := os.OpenFile("count.csv", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	file, err := os.OpenFile(job.csvFileName, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 	csvWriter := csv.NewWriter(file)
 
-	header := make([]string, 0, len(c.schemas)+1)
+	header := make([]string, 0, len(job.schemas)+1)
 	header = append(header, "Tables")
-	for _, ds := range c.sqler.cfg.DataSources {
+	for _, ds := range job.sqler.cfg.DataSources {
 		header = append(header, ds.DsKey())
 	}
 	if err := csvWriter.Write(header); err != nil {
 		return err
 	}
 
-	for _, schema := range c.schemas {
+	for _, schema := range job.schemas {
 		tableRow := make([]string, 0, len(sqler.cfg.DataSources)+1)
 		tableRow = append(tableRow, schema)
 		for _, ds := range sqler.cfg.DataSources {

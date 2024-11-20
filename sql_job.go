@@ -37,11 +37,13 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 	}
 }
 
-func (job *SqlJob) Exec() error {
+func (job *SqlJob) BeforeExec() {
 	if job.ctx.ExportCsv {
-		printer.Info(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+		job.PrintNow(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 	}
-	job.result.WriteString(job.Prefix)
+}
+
+func (job *SqlJob) Exec() error {
 	var err error
 	job.SqlRows, err = job.DB.Query(job.Stmt)
 	//time.Sleep(time.Duration(3+rand.Intn(8)) * time.Second)
@@ -57,9 +59,11 @@ func (job *SqlJob) Exec() error {
 	// Export data to csv if necessary
 	if job.ctx.ExportCsv {
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
+		job.PrintAfterDone(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 		return nil
 	}
 
+	job.PrintAfterDone(job.Prefix)
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
 		job.PrintAfterDone("OK")
@@ -121,7 +125,6 @@ func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
 		job.ctx.CsvFile.Write(append(row, job.DsCfg.DsKey()))
 	}
 	job.ctx.CsvFile.Flush()
-	printer.Info(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 }
 
 func parseStmt(stmt string) (string, bool) {

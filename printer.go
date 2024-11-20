@@ -69,7 +69,7 @@ func (p *CompositedPrinter) Log(msg string) {
 func (p *CompositedPrinter) Error(msg string, err error) {
 	p.wg.Add(1)
 	p.ch <- &printerMsg{
-		msg:        []byte(fmt.Sprintf("[Error] %s: %s", msg, err.Error())),
+		msg:        []byte(fmt.Sprintf("[Error] %s: %s\n", msg, err.Error())),
 		isStdOut:   true,
 		isLoggable: true,
 	}

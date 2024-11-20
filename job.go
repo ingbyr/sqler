@@ -6,14 +6,14 @@ import (
 )
 
 type Job interface {
+	AfterDoneOutput() string
 	Exec() error
 	Wait()
 	MarkDone()
-	SetError(err error)
 	StopOtherJobsWhenError() bool
 	AfterSubmit()
 	BeforeExec()
-	AfterExec()
+	AfterExec(err error)
 	AfterDone()
 	PrintNow(msg string)
 	PrintAfterDone(msg string)
@@ -21,10 +21,10 @@ type Job interface {
 
 func NewBaseJob(ctx *JobCtx) *BaseJob {
 	b := &BaseJob{
-		ctx:    ctx,
-		result: new(bytes.Buffer),
-		wg:     new(sync.WaitGroup),
-		err:    nil,
+		ctx:        ctx,
+		doneOutput: new(bytes.Buffer),
+		wg:         new(sync.WaitGroup),
+		err:        nil,
 	}
 	b.wg.Add(1)
 	return b
@@ -33,10 +33,14 @@ func NewBaseJob(ctx *JobCtx) *BaseJob {
 var _ Job = (*BaseJob)(nil)
 
 type BaseJob struct {
-	ctx    *JobCtx
-	result *bytes.Buffer
-	wg     *sync.WaitGroup
-	err    error
+	ctx        *JobCtx
+	doneOutput *bytes.Buffer
+	wg         *sync.WaitGroup
+	err        error
+}
+
+func (b *BaseJob) AfterDoneOutput() string {
+	return b.doneOutput.String()
 }
 
 func (b *BaseJob) PrintNow(msg string) {
@@ -44,7 +48,7 @@ func (b *BaseJob) PrintNow(msg string) {
 }
 
 func (b *BaseJob) PrintAfterDone(msg string) {
-	b.result.WriteString(msg)
+	b.doneOutput.WriteString(msg)
 }
 
 func (b *BaseJob) AfterSubmit() {
@@ -53,11 +57,10 @@ func (b *BaseJob) AfterSubmit() {
 func (b *BaseJob) BeforeExec() {
 }
 
-func (b *BaseJob) AfterExec() {
+func (b *BaseJob) AfterExec(err error) {
 }
 
 func (b *BaseJob) AfterDone() {
-	printer.Info(b.result.String())
 }
 
 func (b *BaseJob) Exec() error {
