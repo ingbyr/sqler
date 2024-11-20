@@ -38,6 +38,7 @@ var (
 	flagBatchRow     int
 	flagExecSqlFile  string
 	flagOutputFile   string
+	flagPara         bool
 )
 
 var (
@@ -60,6 +61,7 @@ func parseFlags() {
 	flag.IntVar(&flagMaxRowNumber, "max-row", 100000, "数据比对最大行数")
 	flag.IntVar(&flagBatchRow, "batch-row", 0, "数据比对每批行数（默认0不限制）")
 	flag.StringVar(&flagOutputFile, "o", "", "结果导出到文件")
+	flag.BoolVar(&flagPara, "p", false, "并发执行模式")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -128,7 +130,7 @@ func cli() {
 			execSql(
 				&SqlJobCtx{
 					StopWhenError:      false,
-					Serial:             false,
+					Serial:             !flagPara,
 					ExportCsv:          true,
 					CsvFileName:        csvFile.Name(),
 					CsvFile:            csv.NewWriter(csvFile),

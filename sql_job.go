@@ -56,6 +56,7 @@ func (job *SqlJob) DoExec() error {
 
 	// Export data to csv if necessary
 	if job.ExportCsv {
+		comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.CsvFileName))
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
 		job.printable = false
 		return nil
@@ -118,8 +119,6 @@ func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns []
 func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
 	job.CsvFileLock.Lock()
 	defer job.CsvFileLock.Unlock()
-	dsKey := job.DsCfg.DsKey()
-	comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", dsKey, job.CsvFileName))
 	if !job.CsvFileHeaderWrote {
 		job.CsvFile.Write(append(headers, "Data Source"))
 		job.CsvFileHeaderWrote = true
@@ -128,7 +127,7 @@ func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
 		job.CsvFile.Write(append(row, job.DsCfg.DsKey()))
 	}
 	job.CsvFile.Flush()
-	comPrinter.PrintInfo(fmt.Sprintf("[%s] Done", dsKey))
+	comPrinter.PrintInfo(fmt.Sprintf("[%s] Done", job.DsCfg.DsKey()))
 }
 
 func parseStmt(stmt string) (string, bool) {
