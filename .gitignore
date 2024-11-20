@@ -2,4 +2,4 @@
 bin/
 tmp*
 *.log
-bidff/
+bdiff/
