@@ -93,7 +93,7 @@ func initSqler(override bool) {
 		if err := sqler.loadSchema(); err != nil {
 			fmt.Println("Failed to load schema: " + err.Error())
 		}
-		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+		//initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
 		sqlStmtCache = new(strings.Builder)
 	}
 }
@@ -194,7 +194,7 @@ func cli() {
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				printer.Info(currentPrefix() + document.Text)
+				printer.Log(currentPrefix() + document.Text)
 			}),
 		)
 		p.Run()
@@ -345,7 +345,12 @@ func executor(line string) {
 	}
 	sqlStmtCache.WriteString(line)
 	if executable {
-		execSql(&SqlJobCtx{StopWhenError: false}, sqlStmtCache.String())
+		execSql(
+			&SqlJobCtx{
+				StopWhenError: false,
+				Printer:       sqler.printer,
+			},
+			sqlStmtCache.String())
 		sqlStmtCache = new(strings.Builder)
 	}
 }

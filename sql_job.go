@@ -62,24 +62,20 @@ func (job *SqlJob) Exec() error {
 
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		job.result.Write([]byte("OK\n"))
+		job.PrintAfterDone("OK")
 	}
 
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
-		job.writeWithFormat(job.result, sqlColumns, sqlResultLines)
+		job.PrintAfterDone(job.formatSqlResult(sqlColumns, sqlResultLines))
 	}
 
 	return nil
 }
 
-func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
-	b.WriteString(err.Error())
-	b.WriteByte('\n')
-	return b.Bytes()
-}
+func (job *SqlJob) formatSqlResult(headers []string, columns [][]string) string {
+	b := new(bytes.Buffer)
 
-func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns [][]string) {
 	// Format as lines
 	if job.UseVerticalResult {
 		maxLen := 0
@@ -101,7 +97,7 @@ func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns []
 				b.WriteByte('\n')
 			}
 		}
-		return
+		return b.String()
 	}
 
 	// Format as table
@@ -111,6 +107,7 @@ func (job *SqlJob) writeWithFormat(b *bytes.Buffer, headers []string, columns []
 		table.Append(columns[i])
 	}
 	table.Render()
+	return b.String()
 }
 
 func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {

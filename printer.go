@@ -11,9 +11,15 @@ const (
 	PrintJobCacheSize = 32
 )
 
+type printerMsg struct {
+	msg        []byte
+	isStdOut   bool
+	isLoggable bool
+}
+
 type CompositedPrinter struct {
 	f  *os.File
-	ch chan []byte
+	ch chan *printerMsg
 	wg *sync.WaitGroup
 }
 
@@ -29,7 +35,7 @@ func NewJobPrinter() *CompositedPrinter {
 	}
 	p := &CompositedPrinter{
 		f:  outputFile,
-		ch: make(chan []byte, PrintJobCacheSize),
+		ch: make(chan *printerMsg, PrintJobCacheSize),
 		wg: new(sync.WaitGroup),
 	}
 	go p.Execute()
@@ -42,33 +48,47 @@ func (p *CompositedPrinter) Wait() {
 
 func (p *CompositedPrinter) Info(msg string) {
 	p.wg.Add(1)
-	p.ch <- []byte(msg)
+	p.ch <- &printerMsg{
+		msg:        append([]byte(msg), '\n'),
+		isStdOut:   true,
+		isLoggable: true,
+	}
+	p.Wait()
 }
 
-func (p *CompositedPrinter) ByteInfo(msg []byte) {
+func (p *CompositedPrinter) Log(msg string) {
 	p.wg.Add(1)
-	p.ch <- msg
+	p.ch <- &printerMsg{
+		msg:        append([]byte(msg), '\n'),
+		isStdOut:   false,
+		isLoggable: true,
+	}
+	p.Wait()
 }
 
 func (p *CompositedPrinter) Error(msg string, err error) {
 	p.wg.Add(1)
-	p.ch <- []byte(fmt.Sprintf("[Error] %s: %s", msg, err.Error()))
+	p.ch <- &printerMsg{
+		msg:        []byte(fmt.Sprintf("[Error] %s: %s", msg, err.Error())),
+		isStdOut:   true,
+		isLoggable: true,
+	}
+	p.Wait()
 }
 
 func (p *CompositedPrinter) Execute() {
 	for {
 		select {
 		case msg := <-p.ch:
-			p.writeBytes(msg)
-			// Mark print job jobWg
+			if msg.isStdOut {
+				p.writeBytesToStdout(msg.msg)
+			}
+			if msg.isLoggable {
+				p.writeBytesToFile(msg.msg)
+			}
 			p.wg.Done()
 		}
 	}
-}
-
-func (p *CompositedPrinter) writeBytes(b []byte) {
-	p.writeBytesToStdout(b)
-	p.writeBytesToFile(b)
 }
 
 func (p *CompositedPrinter) writeBytesToStdout(b []byte) {
