@@ -10,31 +10,25 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
-var _ ExecutableJob = (*ConnJob)(nil)
-
 type ConnJob struct {
 	Idx   int
 	sqler *Sqler
-	*DefaultJob
+	*BaseJob
 }
 
-func NewConnJob(idx int, sqler *Sqler) Job {
-	connJob := &ConnJob{
-		Idx:   idx,
-		sqler: sqler,
+func NewConnJob(sqler *Sqler, idx int) Job {
+	return &ConnJob{
+		Idx:     idx,
+		sqler:   sqler,
+		BaseJob: NewBaseJob(NewSqlJobCtx(sqler.printer)),
 	}
-	return WrapJob(connJob)
-}
-
-func (job *ConnJob) SetWrapper(defaultJob *DefaultJob) {
-	job.DefaultJob = defaultJob
 }
 
 func (job *ConnJob) StopOtherJobsWhenError() bool {
 	return true
 }
 
-func (job *ConnJob) DoExec() error {
+func (job *ConnJob) Exec() error {
 	ds := job.sqler.cfg.DataSources[job.Idx]
 	dsArgs := job.sqler.cfg.DataSourceArgs
 	db, err := job.connect(ds, dsArgs)
@@ -61,20 +55,21 @@ func (job *ConnJob) connectMySQL(ds *pkg.DataSourceConfig, dsArgs string) (*sql.
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, dsArgs)
 	db, err := sql.Open(ds.Type, dsn)
 	if err != nil {
-		job.output.WriteString(fmt.Sprintf("Failed to parse dsn, %v", err))
-		job.level = Error
+		job.PrintAfterDone(fmt.Sprintf("Failed to parse dsn, %v\n", err))
 		return nil, err
 	}
 	if err = db.PingContext(job.sqler.ctx); err != nil {
-		job.output.WriteString(fmt.Sprintf("Failed to connect db, %v", err))
-		job.level = Error
+		job.PrintAfterDone(fmt.Sprintf("Failed to connect db, %v\n", err))
 		return nil, err
 	}
-	job.output.WriteString(fmt.Sprintf("[%d/%d] Connected %s", job.Idx+1, len(job.sqler.dbs),
+	job.PrintAfterDone(fmt.Sprintf("[%d/%d] Connected %s\n", job.Idx+1, len(job.sqler.dbs),
 		fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, "******", ds.Url, ds.Schema, dsArgs)))
 	return db, nil
 }
 
 func (job *ConnJob) connectSqlLite(ds *pkg.DataSourceConfig, args string) (*sql.DB, error) {
-	return sql.Open("sqlite3", "file:"+ds.Schema+".sqlite")
+	db, err := sql.Open("sqlite3", "file:"+ds.Schema+".sqlite")
+	job.PrintAfterDone(fmt.Sprintf("[%d/%d] Connected %s\n", job.Idx+1, len(job.sqler.dbs),
+		fmt.Sprintf("%s:%s@tcp(%s)/%s", ds.Username, "******", ds.Url, ds.Schema)))
+	return db, err
 }

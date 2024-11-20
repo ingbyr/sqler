@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var _ ExecutableJob = (*SqlJob)(nil)
+var _ Job = (*SqlJob)(nil)
 
 type SqlJob struct {
 	Stmt              string
@@ -20,31 +20,31 @@ type SqlJob struct {
 	SqlRows           *sql.Rows
 	UseVerticalResult bool
 	ctx               *SqlJobCtx
-	*DefaultJob
+	*BaseJob
 }
 
 func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, jobCtx *SqlJobCtx) Job {
 	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
 	stmt, useVerticalResult := parseStmt(stmt)
-	job := &SqlJob{
+	return &SqlJob{
 		Stmt:              stmt,
 		DB:                db,
 		DsCfg:             dsCfg,
 		Prefix:            prefix,
 		UseVerticalResult: useVerticalResult,
 		ctx:               jobCtx,
+		BaseJob:           NewBaseJob(NewSqlJobCtx(sqler.printer)),
 	}
-	return WrapJob(job)
 }
 
-func (job *SqlJob) SetWrapper(defaultJob *DefaultJob) {
-	job.DefaultJob = defaultJob
-}
-
-func (job *SqlJob) DoExec() error {
-	job.output.WriteString(job.Prefix)
+func (job *SqlJob) Exec() error {
+	if job.ctx.ExportCsv {
+		printer.Info(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+	}
+	job.result.WriteString(job.Prefix)
 	var err error
 	job.SqlRows, err = job.DB.Query(job.Stmt)
+	//time.Sleep(time.Duration(3+rand.Intn(8)) * time.Second)
 	if err != nil {
 		return err
 	}
@@ -56,27 +56,24 @@ func (job *SqlJob) DoExec() error {
 
 	// Export data to csv if necessary
 	if job.ctx.ExportCsv {
-		comPrinter.PrintInfo(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
-		job.printable = false
 		return nil
 	}
 
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		job.output.Write([]byte("OK\n"))
+		job.result.Write([]byte("OK\n"))
 	}
 
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
-		job.writeWithFormat(job.output, sqlColumns, sqlResultLines)
+		job.writeWithFormat(job.result, sqlColumns, sqlResultLines)
 	}
 
 	return nil
 }
 
 func (job *SqlJob) MsgError(err error, b *bytes.Buffer) []byte {
-	job.level = Error
 	b.WriteString(err.Error())
 	b.WriteByte('\n')
 	return b.Bytes()
@@ -127,7 +124,7 @@ func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
 		job.ctx.CsvFile.Write(append(row, job.DsCfg.DsKey()))
 	}
 	job.ctx.CsvFile.Flush()
-	comPrinter.PrintInfo(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+	printer.Info(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 }
 
 func parseStmt(stmt string) (string, bool) {

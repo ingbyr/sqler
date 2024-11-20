@@ -11,8 +11,6 @@ import (
 	"strings"
 )
 
-var _ ExecutableJob = (*CountJob)(nil)
-
 func NewBdiffJob(sqler *Sqler, schemas []string, maxRow int, batchRow int) Job {
 	if len(schemas) == 0 {
 		schemas = sqler.cfg.CommandsConfig.BdiffSchemas
@@ -21,13 +19,14 @@ func NewBdiffJob(sqler *Sqler, schemas []string, maxRow int, batchRow int) Job {
 	for _, skipCol := range sqler.cfg.CommandsConfig.BdiffSkipCols {
 		skipColsMap[skipCol] = true
 	}
-	return WrapJob(&BdiffJob{
+	return &BdiffJob{
 		sqler:       sqler,
 		schemas:     schemas,
 		maxRow:      maxRow,
 		skipColsMap: skipColsMap,
 		batchRow:    batchRow,
-	})
+		BaseJob:     NewBaseJob(NewSqlJobCtx(sqler.printer)),
+	}
 }
 
 type BdiffJob struct {
@@ -36,7 +35,7 @@ type BdiffJob struct {
 	maxRow      int
 	skipColsMap map[string]bool
 	batchRow    int
-	*DefaultJob
+	*BaseJob
 }
 
 type dataRow struct {
@@ -44,7 +43,7 @@ type dataRow struct {
 	compared bool
 }
 
-func (job *BdiffJob) DoExec() error {
+func (job *BdiffJob) Exec() error {
 	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -59,7 +58,7 @@ func (job *BdiffJob) DoExec() error {
 		}
 		csvFile := csv.NewWriter(file)
 
-		comPrinter.PrintInfo(fmt.Sprintf("[%s] Loading BASE data: %s", pkg.Now(), schema))
+		printer.Info(fmt.Sprintf("[%s] Loading BASE data: %s", pkg.Now(), schema))
 		// Skip if too many data
 		_ = baseDb.Ping()
 		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
@@ -75,7 +74,7 @@ func (job *BdiffJob) DoExec() error {
 			return err
 		}
 		if job.maxRow > 0 && job.maxRow < rowNumber {
-			comPrinter.PrintInfo(fmt.Sprintf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n", pkg.Now(), schema, rowNumber, job.maxRow))
+			printer.Info(fmt.Sprintf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n", pkg.Now(), schema, rowNumber, job.maxRow))
 			continue
 		}
 
@@ -106,29 +105,25 @@ func (job *BdiffJob) DoExec() error {
 			if dbIdx == 0 {
 				continue
 			}
-			comPrinter.PrintInfo(fmt.Sprintf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
+			printer.Info(fmt.Sprintf("[%s] Comparing table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
 				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1))
 			dsKey := job.sqler.cfg.DataSources[dbIdx].DsKey()
 			// Compare
 			compare(csvFile, dsKey, schema, baseColumns, baseRowMap, db, query, skipCol, job.batchRow)
 			csvFile.Flush()
-			comPrinter.PrintInfo(fmt.Sprintf("[%s] Compared table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
+			printer.Info(fmt.Sprintf("[%s] Compared table %s (%d/%d) at db %s (%d/%d) ... ", pkg.Now(),
 				schema, sid+1, len(job.schemas), job.sqler.cfg.DataSources[dbIdx].DsKey(), dbIdx, len(job.sqler.dbs)-1))
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
 			return err
 		}
-		comPrinter.PrintInfo(fmt.Sprintf("[%s] Saved to csv file: %s\n", pkg.Now(), csvFileName))
+		printer.Info(fmt.Sprintf("[%s] Saved to csv file: %s\n", pkg.Now(), csvFileName))
 	}
 
-	comPrinter.PrintInfo(fmt.Sprintf("[%s] All bdiff jobs are done", pkg.Now()))
+	printer.Info(fmt.Sprintf("[%s] All bdiff jobs are jobWg", pkg.Now()))
 
 	return nil
-}
-
-func (job *BdiffJob) SetWrapper(defaultJob *DefaultJob) {
-	job.DefaultJob = defaultJob
 }
 
 func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,

@@ -7,22 +7,21 @@ import (
 	"os"
 )
 
-var _ ExecutableJob = (*CountJob)(nil)
-
 func NewCountJob(sqler *Sqler, schemas []string) Job {
-	return WrapJob(&CountJob{
+	return &CountJob{
 		sqler:   sqler,
 		schemas: schemas,
-	})
+		BaseJob: NewBaseJob(NewSqlJobCtx(sqler.printer)),
+	}
 }
 
 type CountJob struct {
 	sqler   *Sqler
 	schemas []string
-	*DefaultJob
+	*BaseJob
 }
 
-func (c *CountJob) DoExec() error {
+func (c *CountJob) Exec() error {
 	// ds - ds - count
 	schemaDsCountMap := make(map[string]map[string]string)
 	for _, schema := range c.schemas {
@@ -83,8 +82,4 @@ func (c *CountJob) DoExec() error {
 	}
 	fmt.Println("Result saved to " + file.Name())
 	return nil
-}
-
-func (c *CountJob) SetWrapper(defaultJob *DefaultJob) {
-	c.DefaultJob = defaultJob
 }

@@ -12,9 +12,9 @@ const (
 )
 
 type CompositedPrinter struct {
-	f    *os.File
-	jobs chan Job
-	wg   *sync.WaitGroup
+	f  *os.File
+	ch chan []byte
+	wg *sync.WaitGroup
 }
 
 func NewJobPrinter() *CompositedPrinter {
@@ -28,101 +28,56 @@ func NewJobPrinter() *CompositedPrinter {
 		panic(err)
 	}
 	p := &CompositedPrinter{
-		f:    outputFile,
-		jobs: make(chan Job, PrintJobCacheSize),
-		wg:   new(sync.WaitGroup),
+		f:  outputFile,
+		ch: make(chan []byte, PrintJobCacheSize),
+		wg: new(sync.WaitGroup),
 	}
 	go p.Execute()
 	return p
 }
 
-func (printer *CompositedPrinter) WaitForNoJob() {
-	printer.wg.Wait()
+func (p *CompositedPrinter) Wait() {
+	p.wg.Wait()
 }
 
-func (printer *CompositedPrinter) Print(job Job) {
-	printer.wg.Add(1)
-	printer.jobs <- job
+func (p *CompositedPrinter) Info(msg string) {
+	p.wg.Add(1)
+	p.ch <- []byte(msg)
 }
 
-func (printer *CompositedPrinter) PrintInfo(msg string) {
-	printer.Print(NewStrJob(msg, Info))
+func (p *CompositedPrinter) ByteInfo(msg []byte) {
+	p.wg.Add(1)
+	p.ch <- msg
 }
 
-func (printer *CompositedPrinter) LogInfo(msg string) {
-	job := NewStrJob(msg, Info)
-	job.SetPrintable(false)
-	printer.Print(job)
+func (p *CompositedPrinter) Error(msg string, err error) {
+	p.wg.Add(1)
+	p.ch <- []byte(fmt.Sprintf("[Error] %s: %s", msg, err.Error()))
 }
 
-func (printer *CompositedPrinter) PrintError(msg string, err error) {
-	printer.Print(NewStrJob(fmt.Sprintf("%s: %s", msg, err.Error()), Error))
-}
-
-func (printer *CompositedPrinter) Execute() {
+func (p *CompositedPrinter) Execute() {
 	for {
 		select {
-		case job := <-printer.jobs:
-			// Wait for done
-			job.Wait()
-			msg := job.Output()
-			err := job.Error()
-			level := job.Level()
-			toStdOut := job.IsPrintable()
-			if err != nil {
-				level = Error
-			}
-			if level != Info && len(msg) != 0 {
-				printer.writeString(level.String(), toStdOut)
-				printer.writeBytes([]byte(" "), toStdOut)
-				printer.writeBytes(msg, toStdOut)
-			} else {
-				printer.writeBytes(msg, toStdOut)
-			}
-			if err != nil {
-				printer.writeString(Error.String(), true)
-				printer.writeBytes([]byte(" "), toStdOut)
-				printer.writeString(err.Error(), true)
-				printer.writeBytes([]byte("\n"), true)
-			}
-			printer.writeBytes([]byte("\n"), toStdOut)
-			// Mark print job done
-			printer.wg.Done()
+		case msg := <-p.ch:
+			p.writeBytes(msg)
+			// Mark print job jobWg
+			p.wg.Done()
 		}
 	}
 }
 
-func (printer *CompositedPrinter) writeString(s string, toStdout bool) {
-	if toStdout {
-		printer.writeStringToStdout(s)
-	}
-	printer.writeStringToFile(s)
+func (p *CompositedPrinter) writeBytes(b []byte) {
+	p.writeBytesToStdout(b)
+	p.writeBytesToFile(b)
 }
 
-func (printer *CompositedPrinter) writeBytes(b []byte, toStdOut bool) {
-	if toStdOut {
-		printer.writeBytesToStdout(b)
-	}
-	printer.writeBytesToFile(b)
-}
-
-func (printer *CompositedPrinter) writeStringToStdout(s string) {
-	n, err := os.Stdout.WriteString(s)
-	mustNoIoError(n, err)
-}
-
-func (printer *CompositedPrinter) writeBytesToStdout(b []byte) {
+func (p *CompositedPrinter) writeBytesToStdout(b []byte) {
 	n, err := os.Stdout.Write(b)
 	mustNoIoError(n, err)
 }
 
-func (printer *CompositedPrinter) writeStringToFile(s string) {
-	n, err := printer.f.WriteString(s)
-	mustNoIoError(n, err)
-}
-
-func (printer *CompositedPrinter) writeBytesToFile(b []byte) {
-	n, err := printer.f.Write(b)
+func (p *CompositedPrinter) writeBytesToFile(b []byte) {
+	n, err := p.f.Write(b)
 	mustNoIoError(n, err)
 }
 

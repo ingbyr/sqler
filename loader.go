@@ -9,12 +9,12 @@ import (
 func LoadSqlFile(sqlFilePath string) []string {
 	sqlFile, err := os.Open(sqlFilePath)
 	if err != nil {
-		comPrinter.PrintError("Failed to open file "+sqlFilePath, err)
+		printer.Error("Failed to open file "+sqlFilePath, err)
 		return nil
 	}
-	comPrinter.PrintInfo("Loading file " + sqlFilePath)
+	printer.Info("Loading file " + sqlFilePath)
 	stmts := LoadStmtsFromFile(sqlFile)
-	comPrinter.PrintInfo("Loaded file " + sqlFilePath)
+	printer.Info("Loaded file " + sqlFilePath)
 	return stmts
 }
 

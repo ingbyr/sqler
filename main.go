@@ -36,14 +36,13 @@ var (
 	flagSchemas      string
 	flagMaxRowNumber int
 	flagBatchRow     int
-	flagExecSqlFile  string
 	flagOutputFile   string
 	flagPara         bool
 )
 
 var (
 	sqler        *Sqler
-	comPrinter   *CompositedPrinter
+	printer      *CompositedPrinter
 	sqlStmtCache *strings.Builder
 )
 
@@ -72,8 +71,8 @@ func initComponents() {
 }
 
 func initJobPrinter(override bool) {
-	if comPrinter == nil || override {
-		comPrinter = NewJobPrinter()
+	if printer == nil || override {
+		printer = NewJobPrinter()
 	}
 }
 
@@ -90,7 +89,7 @@ func initSqler(override bool) {
 		if err != nil {
 			panic(err)
 		}
-		sqler = NewSqler(cfg, comPrinter)
+		sqler = NewSqler(cfg, printer)
 		if err := sqler.loadSchema(); err != nil {
 			fmt.Println("Failed to load schema: " + err.Error())
 		}
@@ -114,12 +113,12 @@ func cli() {
 	if flagSqlFile != "" {
 		doActions = true
 		initComponents()
-		comPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
+		printer.Info(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		if flagOutputFile == "" {
 			execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
 		} else {
 			if !strings.HasSuffix(flagOutputFile, ".csv") {
-				comPrinter.PrintInfo("Output file must be csv file")
+				printer.Info("Output file must be csv file")
 				return
 			}
 			csvFile, err := os.OpenFile(flagOutputFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -135,7 +134,7 @@ func cli() {
 					CsvFileName:        csvFile.Name(),
 					CsvFile:            csv.NewWriter(csvFile),
 					CsvFileHeaderWrote: false,
-					CsvFileLock:        sync.Mutex{},
+					CsvFileLock:        &sync.Mutex{},
 				},
 				LoadSqlFile(flagSqlFile)...)
 		}
@@ -176,11 +175,11 @@ func cli() {
 			schemas = strings.Split(flagSchemas, " ")
 		}
 		bdiffJob := NewBdiffJob(sqler, schemas, flagMaxRowNumber, flagBatchRow)
-		jobExecutor := NewJobExecutor(1, comPrinter)
+		jobExecutor := NewJobExecutor(1, printer)
 		jobExecutor.Start()
 		jobExecutor.Submit(bdiffJob, 0)
 		jobExecutor.Shutdown(true)
-		//comPrinter.WaitForNoJob(true)
+		//printer.WaitForNoJob(true)
 		return
 	}
 
@@ -195,7 +194,7 @@ func cli() {
 			}),
 			prompt.OptionTitle("sqler"),
 			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
-				comPrinter.LogInfo(currentPrefix() + document.Text)
+				printer.Info(currentPrefix() + document.Text)
 			}),
 		)
 		p.Run()
@@ -258,7 +257,7 @@ func executor(line string) {
 				ds.Url, ds.Schema, strconv.FormatBool(ds.Enabled)})
 		}
 		table.Render()
-		comPrinter.PrintInfo(b.String())
+		printer.Info(b.String())
 		return
 	}
 
@@ -270,7 +269,7 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdActive) {
 		configFiles := strings.Split(line, " ")[1:]
 		if len(configFiles) != 1 {
-			comPrinter.PrintInfo("args 0 must be one string")
+			printer.Info("args 0 must be one string")
 			return
 		}
 		configFile = configFiles[0]
@@ -284,7 +283,7 @@ func executor(line string) {
 			schemas = sqler.cfg.CommandsConfig.CountSchemas
 		}
 		countJob := NewCountJob(sqler, schemas)
-		jobExecutor := NewJobExecutor(1, comPrinter)
+		jobExecutor := NewJobExecutor(1, printer)
 		jobExecutor.Start()
 		jobExecutor.Submit(countJob, 0)
 		jobExecutor.Shutdown(true)
@@ -294,12 +293,12 @@ func executor(line string) {
 	if strings.HasPrefix(line, pkg.CmdExportCsv) {
 		parts := splitBySpacesWithQuotes(line)
 		if len(parts) != 3 {
-			comPrinter.PrintInfo("Invalid args")
+			printer.Info("Invalid args")
 			return
 		}
 		csvFileName := parts[1]
 		if !strings.HasSuffix(csvFileName, ".csv") {
-			comPrinter.PrintInfo("File name must end with csv")
+			printer.Info("File name must end with csv")
 			return
 		}
 		csvFile, err := os.OpenFile(csvFileName, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -315,7 +314,7 @@ func executor(line string) {
 			}
 			stmts := LoadStmtsFromFile(sqlFile)
 			if len(stmts) != 1 {
-				comPrinter.PrintInfo("Only support 1 sql in file")
+				printer.Info("Only support 1 sql in file")
 				return
 			}
 			sqlStmt = stmts[0]
@@ -329,14 +328,14 @@ func executor(line string) {
 			CsvFileName:        csvFileName,
 			CsvFile:            csv.NewWriter(csvFile),
 			CsvFileHeaderWrote: false,
-			CsvFileLock:        sync.Mutex{},
+			CsvFileLock:        &sync.Mutex{},
 		}
 		execSql(sqlJobCtx, sqlStmt)
 		return
 	}
 
 	if strings.HasPrefix(line, pkg.CmdLog) {
-		comPrinter.PrintInfo(comPrinter.f.Name() + "\n")
+		printer.Info(printer.f.Name() + "\n")
 		return
 	}
 

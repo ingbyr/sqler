@@ -5,104 +5,81 @@ import (
 	"sync"
 )
 
-func WrapJob(job ExecutableJob) *DefaultJob {
-	return WrapJobWithLevel(job, Info)
-}
-
-func WrapJobWithLevel(job ExecutableJob, level Level) *DefaultJob {
-	done := new(sync.WaitGroup)
-	done.Add(1)
-	defaultJob := &DefaultJob{
-		job:       job,
-		level:     level,
-		output:    new(bytes.Buffer),
-		done:      done,
-		printable: true,
-	}
-	job.SetWrapper(defaultJob)
-	return defaultJob
-}
-
-type ExecutableJob interface {
-	DoExec() error
-	Output() []byte
-	SetWrapper(job *DefaultJob)
-}
-
 type Job interface {
-	Output() []byte
 	Exec() error
-	Level() Level
 	Wait()
-	Done()
-	IsPrintable() bool
-	SetPrintable(printable bool)
+	MarkDone()
 	SetError(err error)
-	Error() error
 	StopOtherJobsWhenError() bool
-	WriteOutputString(output string)
+	AfterSubmit()
+	BeforeExec()
+	AfterExec()
+	AfterDone()
+	PrintNow(msg string)
+	PrintAfterDone(msg string)
 }
 
-var _ Job = (*DefaultJob)(nil)
-var _ Job = (*StrJob)(nil)
-
-type DefaultJob struct {
-	job       ExecutableJob
-	level     Level
-	output    *bytes.Buffer
-	done      *sync.WaitGroup
-	printable bool
-	err       error
-}
-
-func (d *DefaultJob) WriteOutputString(output string) {
-	d.output.WriteString(output)
-}
-
-func (d *DefaultJob) Exec() error {
-	return d.job.DoExec()
-}
-
-func (d *DefaultJob) SetDone(done *sync.WaitGroup) {
-	d.done = done
-}
-
-func (d *DefaultJob) IsPrintable() bool {
-	return d.printable
-}
-
-func (d *DefaultJob) SetPrintable(printable bool) {
-	d.printable = printable
-}
-
-func (d *DefaultJob) Output() []byte {
-	return d.output.Bytes()
-}
-
-func (d *DefaultJob) Wait() {
-	if d.done != nil {
-		d.done.Wait()
+func NewBaseJob(ctx *SqlJobCtx) *BaseJob {
+	b := &BaseJob{
+		ctx:    ctx,
+		result: new(bytes.Buffer),
+		wg:     new(sync.WaitGroup),
+		err:    nil,
 	}
+	b.wg.Add(1)
+	return b
 }
 
-func (d *DefaultJob) Done() {
-	if d.done != nil {
-		d.done.Done()
-	}
+var _ Job = (*BaseJob)(nil)
+
+type BaseJob struct {
+	ctx    *SqlJobCtx
+	result *bytes.Buffer
+	wg     *sync.WaitGroup
+	err    error
 }
 
-func (d *DefaultJob) Level() Level {
-	return d.level
+func (b *BaseJob) PrintNow(msg string) {
+	b.ctx.Printer.Info(msg)
 }
 
-func (d *DefaultJob) StopOtherJobsWhenError() bool {
+func (b *BaseJob) PrintAfterDone(msg string) {
+	b.result.WriteString(msg)
+}
+
+func (b *BaseJob) AfterSubmit() {
+}
+
+func (b *BaseJob) BeforeExec() {
+}
+
+func (b *BaseJob) AfterExec() {
+}
+
+func (b *BaseJob) AfterDone() {
+	b.ctx.Printer.Info(b.result.String())
+}
+
+func (b *BaseJob) Exec() error {
+	panic("implement me")
+}
+
+func (b *BaseJob) Wait() {
+	b.wg.Wait()
+}
+
+func (b *BaseJob) MarkDone() {
+	b.wg.Done()
+}
+
+func (b *BaseJob) StopOtherJobsWhenError() bool {
 	return false
 }
 
-func (d *DefaultJob) SetError(err error) {
-	d.err = err
+func (b *BaseJob) SetError(err error) {
+	b.err = err
 }
 
-func (d *DefaultJob) Error() error {
-	return d.err
+func (b *BaseJob) Error() error {
+	return b.err
 }

@@ -20,70 +20,91 @@ func NewJobExecutorWithCache(jobGroupSize int, cacheSize int, printer *Composite
 		jobGroup[i] = make(chan Job, cacheSize)
 	}
 	return &JobExecutor{
-		jobGroup:   jobGroup,
+		jobChGroup: jobGroup,
+		doneJobCh:  make(chan Job, 16),
 		ctx:        ctx,
 		cancel:     cancelFunc,
 		printer:    printer,
-		totalJobWg: new(sync.WaitGroup),
+		jobWg:      new(sync.WaitGroup),
+		doneJobWg:  new(sync.WaitGroup),
 	}
 }
 
 type JobExecutor struct {
-	jobGroup   []chan Job
+	jobChGroup []chan Job
+	doneJobCh  chan Job
 	ctx        context.Context
 	cancel     context.CancelFunc
 	printer    *CompositedPrinter
-	totalJobWg *sync.WaitGroup
+	jobWg      *sync.WaitGroup
+	doneJobWg  *sync.WaitGroup
 	hasError   atomic.Bool
 }
 
-func (e *JobExecutor) Start() {
-	for i := 0; i < len(e.jobGroup); i++ {
-		go e.handleJob(e.jobGroup[i])
+func (je *JobExecutor) Start() {
+	go je.handleDoneJob()
+	for i := 0; i < len(je.jobChGroup); i++ {
+		go je.handleJob(je.jobChGroup[i])
 	}
 }
 
-func (e *JobExecutor) Submit(job Job, jobGroupId int) {
-	jobChan := e.jobGroup[jobGroupId]
-	e.totalJobWg.Add(1)
-	jobChan <- job
-	if job.IsPrintable() {
-		e.printer.Print(job)
-	}
+func (je *JobExecutor) Submit(job Job, jobGroupId int) {
+	je.jobWg.Add(1)
+	je.jobChGroup[jobGroupId] <- job
+
+	je.doneJobWg.Add(1)
+	je.doneJobCh <- job
+
+	job.AfterSubmit()
 }
 
-func (e *JobExecutor) WaitForNoRemainJob() {
-	e.totalJobWg.Wait()
-	e.printer.WaitForNoJob()
+func (je *JobExecutor) WaitForNoRemainJob() {
+	je.jobWg.Wait()
+	je.doneJobWg.Wait()
 }
 
-func (e *JobExecutor) Shutdown(wait bool) {
+func (je *JobExecutor) Shutdown(wait bool) {
 	if !wait {
-		e.cancel()
+		je.cancel()
 		return
 	}
-	e.WaitForNoRemainJob()
+	je.WaitForNoRemainJob()
 }
 
 // HasAnyError will be reset to false when invoked
-func (e *JobExecutor) HasAnyError() bool {
-	defer e.hasError.Store(false)
-	return e.hasError.Load()
+func (je *JobExecutor) HasAnyError() bool {
+	defer je.hasError.Store(false)
+	return je.hasError.Load()
 }
 
-func (e *JobExecutor) handleJob(jobChan chan Job) {
+func (je *JobExecutor) handleJob(jobChan chan Job) {
 	for {
 		select {
-		case <-e.ctx.Done():
+		case <-je.ctx.Done():
 			return
 		case job := <-jobChan:
+			job.BeforeExec()
 			err := job.Exec()
 			if err != nil {
 				job.SetError(err)
-				e.hasError.Store(true)
+				je.hasError.Store(true)
 			}
-			job.Done()
-			e.totalJobWg.Done()
+			job.AfterExec()
+			job.MarkDone()
+			je.jobWg.Done()
+		}
+	}
+}
+
+func (je *JobExecutor) handleDoneJob() {
+	for {
+		select {
+		case <-je.ctx.Done():
+			return
+		case doneJob := <-je.doneJobCh:
+			doneJob.Wait()
+			doneJob.AfterDone()
+			je.doneJobWg.Done()
 		}
 	}
 }

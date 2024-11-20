@@ -34,7 +34,7 @@ func NewSqler(cfg *pkg.Config, printer *CompositedPrinter) *Sqler {
 		dbs:         make([]*sql.DB, len(cfg.DataSources)),
 		tableMetas:  make([]*TableMeta, 0, 32),
 		columnMeats: make([]*ColumnMeta, 0, 128),
-		printer:     comPrinter,
+		printer:     printer,
 		jobExecutor: NewJobExecutor(len(cfg.DataSources), printer),
 	}
 
@@ -49,9 +49,9 @@ func NewSqler(cfg *pkg.Config, printer *CompositedPrinter) *Sqler {
 func (s *Sqler) ConnectToDb() {
 	jobExecutor := NewJobExecutor(len(s.dbs), s.printer)
 	jobExecutor.Start()
-	for dbID := 0; dbID < len(s.dbs); dbID++ {
-		connJob := NewConnJob(dbID, s)
-		jobExecutor.Submit(connJob, dbID)
+	for idx := 0; idx < len(s.dbs); idx++ {
+		connJob := NewConnJob(s, idx)
+		jobExecutor.Submit(connJob, idx)
 	}
 	jobExecutor.Shutdown(true)
 }
