@@ -1,6 +1,9 @@
 package main
 
-import "encoding/csv"
+import (
+	"encoding/csv"
+	"sync"
+)
 
 type SqlJobCtx struct {
 	Serial             bool
@@ -9,4 +12,5 @@ type SqlJobCtx struct {
 	CsvFileName        string
 	CsvFile            *csv.Writer
 	CsvFileHeaderWrote bool
+	CsvFileLock        sync.Mutex
 }

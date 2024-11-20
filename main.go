@@ -13,6 +13,7 @@ import (
 	"sqler/pkg"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
@@ -127,11 +128,12 @@ func cli() {
 			execSql(
 				&SqlJobCtx{
 					StopWhenError:      false,
-					Serial:             true,
+					Serial:             false,
 					ExportCsv:          true,
 					CsvFileName:        csvFile.Name(),
 					CsvFile:            csv.NewWriter(csvFile),
 					CsvFileHeaderWrote: false,
+					CsvFileLock:        sync.Mutex{},
 				},
 				LoadSqlFile(flagSqlFile)...)
 		}
@@ -320,11 +322,12 @@ func executor(line string) {
 		}
 		sqlJobCtx := &SqlJobCtx{
 			StopWhenError:      false,
-			Serial:             true,
+			Serial:             false,
 			ExportCsv:          true,
 			CsvFileName:        csvFileName,
 			CsvFile:            csv.NewWriter(csvFile),
 			CsvFileHeaderWrote: false,
+			CsvFileLock:        sync.Mutex{},
 		}
 		execSql(sqlJobCtx, sqlStmt)
 		return
