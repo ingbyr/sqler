@@ -35,6 +35,8 @@ var (
 	flagSchemas      string
 	flagMaxRowNumber int
 	flagBatchRow     int
+	flagExecSqlFile  string
+	flagOutputFile   string
 )
 
 var (
@@ -56,6 +58,7 @@ func parseFlags() {
 	flag.StringVar(&flagSchemas, "schemas", "", "数据比对的表 (table_a table_2 ...)")
 	flag.IntVar(&flagMaxRowNumber, "max-row", 100000, "数据比对最大行数")
 	flag.IntVar(&flagBatchRow, "batch-row", 0, "数据比对每批行数（默认0不限制）")
+	flag.StringVar(&flagOutputFile, "o", "", "结果导出到文件")
 	flag.Parse()
 	configFile = flagConfig
 }
@@ -109,7 +112,29 @@ func cli() {
 		doActions = true
 		initComponents()
 		comPrinter.PrintInfo(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
-		execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
+		if flagOutputFile == "" {
+			execSql(&SqlJobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
+		} else {
+			if !strings.HasSuffix(flagOutputFile, ".csv") {
+				comPrinter.PrintInfo("Output file must be csv file")
+				return
+			}
+			csvFile, err := os.OpenFile(flagOutputFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+			if err != nil {
+				panic(err)
+			}
+			defer csvFile.Close()
+			execSql(
+				&SqlJobCtx{
+					StopWhenError:      false,
+					Serial:             true,
+					ExportCsv:          true,
+					CsvFileName:        csvFile.Name(),
+					CsvFile:            csv.NewWriter(csvFile),
+					CsvFileHeaderWrote: false,
+				},
+				LoadSqlFile(flagSqlFile)...)
+		}
 	}
 
 	if flagEnc != "" {
