@@ -60,7 +60,7 @@ func (je *JobExecutor) Submit(job Job, jobGroupId int) {
 func (je *JobExecutor) WaitForNoRemainJob() {
 	je.jobWg.Wait()
 	je.doneJobWg.Wait()
-	je.printer.Wait()
+	printer.Wait()
 }
 
 func (je *JobExecutor) Shutdown(wait bool) {
