@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"os"
 )
@@ -23,7 +22,7 @@ type CountJob struct {
 	*BaseJob
 }
 
-func (job *CountJob) Exec() error {
+func (job *CountJob) Exec() {
 	// ds - ds - count
 	schemaDsCountMap := make(map[string]map[string]string)
 	for _, schema := range job.schemas {
@@ -50,7 +49,10 @@ func (job *CountJob) Exec() error {
 	}
 
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		for _, err := range errs {
+			job.RecordError(err)
+		}
+		return
 	}
 
 	// Csv
@@ -67,7 +69,8 @@ func (job *CountJob) Exec() error {
 		header = append(header, ds.DsKey())
 	}
 	if err := csvWriter.Write(header); err != nil {
-		return err
+		job.RecordError(err)
+		return
 	}
 
 	for _, schema := range job.schemas {
@@ -78,10 +81,11 @@ func (job *CountJob) Exec() error {
 		}
 		// Csv content
 		if err := csvWriter.Write(tableRow); err != nil {
-			return err
+			job.RecordError(err)
+			return
 		}
 		csvWriter.Flush()
 	}
 	fmt.Println("Result saved to " + file.Name())
-	return nil
+	return
 }

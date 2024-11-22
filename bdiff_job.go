@@ -43,9 +43,11 @@ type dataRow struct {
 	compared bool
 }
 
-func (job *BdiffJob) Exec() error {
+func (job *BdiffJob) Exec() {
 	if err := os.Mkdir("bdiff", 0755); err != nil && !os.IsExist(err) {
-		return err
+		if job.RecordError(err) {
+			return
+		}
 	}
 	baseDb := job.sqler.dbs[0]
 	// Compare schemas
@@ -62,16 +64,16 @@ func (job *BdiffJob) Exec() error {
 		// Skip if too many data
 		_ = baseDb.Ping()
 		rows, err := baseDb.Query(fmt.Sprintf("select count(*) from %s", schema))
-		if err != nil {
-			return err
+		if job.RecordError(err) {
+			return
 		}
 		_, result, err := convertSqlResults(rows)
-		if err != nil {
-			return err
+		if job.RecordError(err) {
+			return
 		}
 		rowNumber, err := strconv.Atoi(result[0][0])
-		if err != nil {
-			return err
+		if job.RecordError(err) {
+			return
 		}
 		if job.maxRow > 0 && job.maxRow < rowNumber {
 			printer.Info(fmt.Sprintf("[%s] Skip comparsion because of too many data in %s (%d > %d)\n", pkg.Now(), schema, rowNumber, job.maxRow))
@@ -81,13 +83,14 @@ func (job *BdiffJob) Exec() error {
 		// Get base data
 		query := "select * from " + schema
 		rawBaseRows, err := baseDb.Query(query)
-		if err != nil {
-			return err
+		if job.RecordError(err) {
+			return
 		}
 		baseColumns, baseRows, err := convertSqlResults(rawBaseRows)
-		if err != nil {
-			return err
+		if job.RecordError(err) {
+			return
 		}
+
 		mustWriteToCsv(csvFile, baseColumns, "Table", "DataSource", "Type", "SQL")
 
 		// Generate skipping cols index
@@ -116,14 +119,13 @@ func (job *BdiffJob) Exec() error {
 		}
 		csvFile.Flush()
 		if err := file.Close(); err != nil {
-			return err
+			job.RecordError(err)
+			return
 		}
 		printer.Info(fmt.Sprintf("[%s] Saved to csv file: %s\n", pkg.Now(), csvFileName))
 	}
 
 	printer.Info(fmt.Sprintf("[%s] All bdiff jobs are jobWg", pkg.Now()))
-
-	return nil
 }
 
 func compare(csvFile *csv.Writer, dsKey string, schema string, baseColumns []string,

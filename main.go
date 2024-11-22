@@ -115,10 +115,20 @@ func cli() {
 		initComponents()
 		printer.Info(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
 		if flagOutputFile == "" {
-			execSql(&JobCtx{StopWhenError: true}, LoadSqlFile(flagSqlFile)...)
+			stmts, err := LoadSqlFile(flagSqlFile)
+			if err != nil {
+				printer.Error("Failed to load sql file "+flagSqlFile, err)
+				return
+			}
+			execSql(&JobCtx{StopWhenError: true}, stmts...)
 		} else {
 			if !strings.HasSuffix(flagOutputFile, ".csv") {
-				printer.Info("AfterDoneOutput file must be csv file")
+				printer.Info("Output file must be csv file")
+				return
+			}
+			stmt, err := LoadOneSqlFile(flagSqlFile)
+			if err != nil {
+				printer.Error("Failed to load sql file "+flagSqlFile, err)
 				return
 			}
 			csvFile, err := os.OpenFile(flagOutputFile, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
@@ -126,17 +136,16 @@ func cli() {
 				panic(err)
 			}
 			defer csvFile.Close()
-			execSql(
-				&JobCtx{
-					StopWhenError:      false,
-					Serial:             !flagPara,
-					ExportCsv:          true,
-					CsvFileName:        csvFile.Name(),
-					CsvFile:            csv.NewWriter(csvFile),
-					CsvFileHeaderWrote: false,
-					CsvFileLock:        &sync.Mutex{},
-				},
-				LoadSqlFile(flagSqlFile)...)
+			jobCtx := &JobCtx{
+				StopWhenError:      false,
+				Serial:             !flagPara,
+				ExportCsv:          true,
+				CsvFileName:        csvFile.Name(),
+				CsvFile:            csv.NewWriter(csvFile),
+				CsvFileHeaderWrote: false,
+				CsvFileLock:        &sync.Mutex{},
+			}
+			execSql(jobCtx, stmt)
 		}
 	}
 
@@ -313,23 +322,20 @@ func executor(line string) {
 		}
 		csvFile, err := os.OpenFile(csvFileName, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
-			panic(err)
+			printer.Error("Failed to create or open file "+csvFileName, err)
+			return
 		}
 		defer csvFile.Close()
 		var sqlStmt string
-		if strings.HasSuffix(parts[2], ".sql") {
-			sqlFile, err := os.Open(parts[2])
+		sqlFileName := parts[2]
+		if strings.HasSuffix(sqlFileName, ".sql") {
+			sqlStmt, err = LoadOneSqlFile(sqlFileName)
 			if err != nil {
-				panic(err)
-			}
-			stmts := LoadStmtsFromFile(sqlFile)
-			if len(stmts) != 1 {
-				printer.Info("Only support 1 sql in file")
+				printer.Error("Failed to load sql "+sqlFileName, err)
 				return
 			}
-			sqlStmt = stmts[0]
 		} else {
-			sqlStmt, _ = strings.CutSuffix(parts[2], ";")
+			sqlStmt, _ = strings.CutSuffix(sqlFileName, ";")
 		}
 		sqlJobCtx := &JobCtx{
 			StopWhenError:      false,
@@ -369,7 +375,12 @@ func sourceSqlFiles(files []string) {
 		return
 	}
 	for _, file := range files {
-		execSql(&JobCtx{StopWhenError: true}, LoadSqlFile(file)...)
+		stmts, err := LoadSqlFile(file)
+		if err != nil {
+			printer.Error("Failed to load sql file "+flagSqlFile, err)
+			return
+		}
+		execSql(&JobCtx{StopWhenError: true}, stmts...)
 	}
 }
 

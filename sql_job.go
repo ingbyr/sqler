@@ -24,7 +24,7 @@ type SqlJob struct {
 }
 
 func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceConfig, db *sql.DB, jobCtx *JobCtx) Job {
-	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s\n", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
+	prefix := fmt.Sprintf("[%d/%d] (%s/%s) > %s", jobId, totalJobSize, dsCfg.Url, dsCfg.Schema, stmt)
 	stmt, useVerticalResult := parseStmt(stmt)
 	return &SqlJob{
 		Stmt:              stmt,
@@ -39,42 +39,42 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 
 func (job *SqlJob) BeforeExec() {
 	if job.ctx.ExportCsv {
-		job.PrintNow(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+		job.Print(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+	} else {
+		job.Print(job.Prefix)
 	}
 }
 
-func (job *SqlJob) Exec() error {
+func (job *SqlJob) Exec() {
 	var err error
 	job.SqlRows, err = job.DB.Query(job.Stmt)
 	//time.Sleep(time.Duration(3+rand.Intn(8)) * time.Second)
-	if err != nil {
-		return err
+	if job.RecordError(err) {
+		return
 	}
+
 	// Convert sql rows to string array
 	sqlColumns, sqlResultLines, err := convertSqlResults(job.SqlRows)
-	if err != nil {
-		return err
+	if job.RecordError(err) {
+		return
 	}
 
 	// Export data to csv if necessary
 	if job.ctx.ExportCsv {
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
-		job.PrintAfterDone(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
-		return nil
+		job.Print(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+		return
 	}
 
-	job.PrintAfterDone(job.Prefix)
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		job.PrintAfterDone("OK")
+		job.Print(" OK")
 	}
 
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
-		job.PrintAfterDone(job.formatSqlResult(sqlColumns, sqlResultLines))
+		job.Print(job.formatSqlResult(sqlColumns, sqlResultLines))
 	}
-
-	return nil
 }
 
 func (job *SqlJob) formatSqlResult(headers []string, columns [][]string) string {

@@ -1,28 +1,29 @@
 package main
 
 import (
-	"bytes"
+	"errors"
 	"sync"
 )
 
 type Job interface {
-	AfterDoneOutput() string
-	Exec() error
+	DoneOutput() []string
+	Exec()
 	Wait()
 	MarkDone()
 	StopOtherJobsWhenError() bool
 	AfterSubmit()
 	BeforeExec()
-	AfterExec(err error)
+	AfterExec()
 	AfterDone()
-	PrintNow(msg string)
-	PrintAfterDone(msg string)
+	Print(msg string)
+	Error() error
+	RecordError(err error) bool
 }
 
 func NewBaseJob(ctx *JobCtx) *BaseJob {
 	b := &BaseJob{
 		ctx:        ctx,
-		doneOutput: new(bytes.Buffer),
+		doneOutput: make([]string, 0),
 		wg:         new(sync.WaitGroup),
 		err:        nil,
 	}
@@ -34,21 +35,17 @@ var _ Job = (*BaseJob)(nil)
 
 type BaseJob struct {
 	ctx        *JobCtx
-	doneOutput *bytes.Buffer
+	doneOutput []string
 	wg         *sync.WaitGroup
 	err        error
 }
 
-func (b *BaseJob) AfterDoneOutput() string {
-	return b.doneOutput.String()
+func (b *BaseJob) DoneOutput() []string {
+	return b.doneOutput
 }
 
-func (b *BaseJob) PrintNow(msg string) {
-	printer.Info(msg)
-}
-
-func (b *BaseJob) PrintAfterDone(msg string) {
-	b.doneOutput.WriteString(msg)
+func (b *BaseJob) Print(msg string) {
+	b.doneOutput = append(b.doneOutput, msg)
 }
 
 func (b *BaseJob) AfterSubmit() {
@@ -57,13 +54,13 @@ func (b *BaseJob) AfterSubmit() {
 func (b *BaseJob) BeforeExec() {
 }
 
-func (b *BaseJob) AfterExec(err error) {
+func (b *BaseJob) AfterExec() {
 }
 
 func (b *BaseJob) AfterDone() {
 }
 
-func (b *BaseJob) Exec() error {
+func (b *BaseJob) Exec() {
 	panic("implement me")
 }
 
@@ -79,10 +76,14 @@ func (b *BaseJob) StopOtherJobsWhenError() bool {
 	return false
 }
 
-func (b *BaseJob) SetError(err error) {
-	b.err = err
-}
-
 func (b *BaseJob) Error() error {
 	return b.err
+}
+
+func (b *BaseJob) RecordError(err error) bool {
+	if err != nil {
+		b.err = errors.Join(b.err, err)
+		return true
+	}
+	return false
 }

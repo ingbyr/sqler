@@ -83,12 +83,11 @@ func (je *JobExecutor) handleJob(jobChan chan Job) {
 			return
 		case job := <-jobChan:
 			job.BeforeExec()
-			err := job.Exec()
-			if err != nil {
+			job.Exec()
+			if job.Error() != nil {
 				je.hasError.Store(true)
-				printer.Error("Failed to execute job", err)
 			}
-			job.AfterExec(err)
+			job.AfterExec()
 			job.MarkDone()
 			je.jobWg.Done()
 		}
@@ -103,10 +102,14 @@ func (je *JobExecutor) handleDoneJob() {
 		case doneJob := <-je.doneJobCh:
 			doneJob.Wait()
 			doneJob.AfterDone()
-			output := doneJob.AfterDoneOutput()
-			if output != "" {
-				printer.Info(output)
+			output := doneJob.DoneOutput()
+			for _, out := range output {
+				printer.Info(out)
 			}
+			if doneJob.Error() != nil {
+				printer.Error("", doneJob.Error())
+			}
+			printer.Info("")
 			je.doneJobWg.Done()
 		}
 	}
