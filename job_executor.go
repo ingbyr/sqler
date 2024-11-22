@@ -19,7 +19,7 @@ func NewJobExecutorWithCache(jobGroupSize int, cacheSize int) *JobExecutor {
 	for i := range jobGroup {
 		jobGroup[i] = make(chan Job, cacheSize)
 	}
-	return &JobExecutor{
+	jobExecutor := &JobExecutor{
 		jobChGroup: jobGroup,
 		doneJobCh:  make(chan Job, 16),
 		ctx:        ctx,
@@ -27,6 +27,7 @@ func NewJobExecutorWithCache(jobGroupSize int, cacheSize int) *JobExecutor {
 		jobWg:      new(sync.WaitGroup),
 		doneJobWg:  new(sync.WaitGroup),
 	}
+	return jobExecutor
 }
 
 type JobExecutor struct {
@@ -60,7 +61,6 @@ func (je *JobExecutor) Submit(job Job, jobGroupId int) {
 func (je *JobExecutor) WaitForNoRemainJob() {
 	je.jobWg.Wait()
 	je.doneJobWg.Wait()
-	printer.Wait()
 }
 
 func (je *JobExecutor) Shutdown(wait bool) {
