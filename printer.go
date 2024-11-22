@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type printerMsg struct {
+type CompositedMessage struct {
 	msg        []byte
 	isStdOut   bool
 	isLoggable bool
@@ -35,8 +35,12 @@ func NewPrinter() *CompositedPrinter {
 	return p
 }
 
+func (p *CompositedPrinter) LogFilePath() string {
+	return p.f.Name()
+}
+
 func (p *CompositedPrinter) Info(msg string) {
-	p.print(&printerMsg{
+	p.print(&CompositedMessage{
 		msg:        append([]byte(msg), '\n'),
 		isStdOut:   true,
 		isLoggable: true,
@@ -44,7 +48,7 @@ func (p *CompositedPrinter) Info(msg string) {
 }
 
 func (p *CompositedPrinter) Log(msg string) {
-	p.print(&printerMsg{
+	p.print(&CompositedMessage{
 		msg:        append([]byte(msg), '\n'),
 		isStdOut:   false,
 		isLoggable: true,
@@ -52,14 +56,16 @@ func (p *CompositedPrinter) Log(msg string) {
 }
 
 func (p *CompositedPrinter) Error(msg string, err error) {
-	p.print(&printerMsg{
+	p.print(&CompositedMessage{
 		msg:        []byte(fmt.Sprintf("[Error] %s: %s\n", msg, err.Error())),
 		isStdOut:   true,
 		isLoggable: true,
 	})
 }
 
-func (p *CompositedPrinter) print(msg *printerMsg) {
+func (p *CompositedPrinter) print(msg *CompositedMessage) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	if msg.isStdOut {
 		p.writeBytesToStdout(msg.msg)
 	}

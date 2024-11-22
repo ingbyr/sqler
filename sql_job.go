@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"math/rand"
 	"sqler/pkg"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var _ Job = (*SqlJob)(nil)
@@ -48,7 +50,7 @@ func (job *SqlJob) BeforeExec() {
 func (job *SqlJob) Exec() {
 	var err error
 	job.SqlRows, err = job.DB.Query(job.Stmt)
-	//time.Sleep(time.Duration(3+rand.Intn(8)) * time.Second)
+	time.Sleep(time.Duration(1+rand.Intn(1)) * time.Second)
 	if job.RecordError(err) {
 		return
 	}

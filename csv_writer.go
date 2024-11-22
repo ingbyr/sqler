@@ -17,7 +17,6 @@ type CsvWriter struct {
 	c        chan *CsvWriterJob
 	ctx      context.Context
 	cancel   context.CancelFunc
-	printer  *CompositedPrinter
 	wg       *sync.WaitGroup
 	hasError atomic.Bool
 }

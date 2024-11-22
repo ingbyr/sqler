@@ -35,7 +35,6 @@ type JobExecutor struct {
 	doneJobCh  chan Job
 	ctx        context.Context
 	cancel     context.CancelFunc
-	printer    *CompositedPrinter
 	jobWg      *sync.WaitGroup
 	doneJobWg  *sync.WaitGroup
 	hasError   atomic.Bool

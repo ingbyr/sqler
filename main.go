@@ -420,5 +420,5 @@ func splitBySpacesWithQuotes(input string) []string {
 
 func main() {
 	cli()
-	fmt.Println("Bye")
+	printer.Info("Execution log is in: " + printer.LogFilePath())
 }

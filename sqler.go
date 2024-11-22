@@ -12,7 +12,6 @@ type Sqler struct {
 	dbs         []*sql.DB
 	tableMetas  []*TableMeta
 	columnMeats []*ColumnMeta
-	printer     *CompositedPrinter
 	jobExecutor *JobExecutor
 }
 
