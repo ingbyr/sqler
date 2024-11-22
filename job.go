@@ -7,6 +7,7 @@ import (
 
 type Job interface {
 	DoneOutput() []string
+	BeforeOutput() []string
 	Exec()
 	Wait()
 	MarkDone()
@@ -15,17 +16,19 @@ type Job interface {
 	BeforeExec()
 	AfterExec()
 	AfterDone()
-	Print(msg string)
+	PrintBeforeExec(msg string)
+	PrintAfterDone(msg string)
 	Error() error
 	RecordError(err error) bool
 }
 
 func NewBaseJob(ctx *JobCtx) *BaseJob {
 	b := &BaseJob{
-		ctx:        ctx,
-		doneOutput: make([]string, 0),
-		wg:         new(sync.WaitGroup),
-		err:        nil,
+		ctx:          ctx,
+		beforeOutput: make([]string, 0),
+		doneOutput:   make([]string, 0),
+		wg:           new(sync.WaitGroup),
+		err:          nil,
 	}
 	b.wg.Add(1)
 	return b
@@ -34,17 +37,26 @@ func NewBaseJob(ctx *JobCtx) *BaseJob {
 var _ Job = (*BaseJob)(nil)
 
 type BaseJob struct {
-	ctx        *JobCtx
-	doneOutput []string
-	wg         *sync.WaitGroup
-	err        error
+	ctx          *JobCtx
+	beforeOutput []string
+	doneOutput   []string
+	wg           *sync.WaitGroup
+	err          error
+}
+
+func (b *BaseJob) BeforeOutput() []string {
+	return b.beforeOutput
+}
+
+func (b *BaseJob) PrintBeforeExec(msg string) {
+	b.beforeOutput = append(b.beforeOutput, msg)
 }
 
 func (b *BaseJob) DoneOutput() []string {
 	return b.doneOutput
 }
 
-func (b *BaseJob) Print(msg string) {
+func (b *BaseJob) PrintAfterDone(msg string) {
 	b.doneOutput = append(b.doneOutput, msg)
 }
 

@@ -55,21 +55,21 @@ func (job *ConnJob) connectMySQL(ds *pkg.DataSourceConfig, dsArgs string) (*sql.
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, ds.Password, ds.Url, ds.Schema, dsArgs)
 	db, err := sql.Open(ds.Type, dsn)
 	if err != nil {
-		job.Print(fmt.Sprintf("Failed to parse dsn, %v", err))
+		job.PrintAfterDone(fmt.Sprintf("Failed to parse dsn, %v", err))
 		return nil, err
 	}
 	if err = db.PingContext(job.sqler.ctx); err != nil {
-		job.Print(fmt.Sprintf("Failed to connect db, %v", err))
+		job.PrintAfterDone(fmt.Sprintf("Failed to connect db, %v", err))
 		return nil, err
 	}
-	job.Print(fmt.Sprintf("[%d/%d] Connected %s", job.dbId+1, len(job.sqler.dbs),
+	job.PrintAfterDone(fmt.Sprintf("[%d/%d] Connected %s", job.dbId+1, len(job.sqler.dbs),
 		fmt.Sprintf("%s:%s@tcp(%s)/%s?%s", ds.Username, "******", ds.Url, ds.Schema, dsArgs)))
 	return db, nil
 }
 
 func (job *ConnJob) connectSqlLite(ds *pkg.DataSourceConfig, args string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", "file:"+ds.Schema+".sqlite")
-	job.Print(fmt.Sprintf("[%d/%d] Connected %s", job.dbId+1, len(job.sqler.dbs),
+	job.PrintAfterDone(fmt.Sprintf("[%d/%d] Connected %s", job.dbId+1, len(job.sqler.dbs),
 		fmt.Sprintf("%s:%s@tcp(%s)/%s", ds.Username, "******", ds.Url, ds.Schema)))
 	return db, err
 }

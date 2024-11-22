@@ -39,9 +39,9 @@ func NewSqlJob(stmt string, jobId int, totalJobSize int, dsCfg *pkg.DataSourceCo
 
 func (job *SqlJob) BeforeExec() {
 	if job.ctx.ExportCsv {
-		job.Print(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+		job.PrintBeforeExec(fmt.Sprintf("[%s] Exporting data to %s ...", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 	} else {
-		job.Print(job.Prefix)
+		job.PrintAfterDone(job.Prefix)
 	}
 }
 
@@ -62,18 +62,18 @@ func (job *SqlJob) Exec() {
 	// Export data to csv if necessary
 	if job.ctx.ExportCsv {
 		job.exportDataToCsv(sqlColumns, sqlResultLines)
-		job.Print(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
+		job.PrintAfterDone(fmt.Sprintf("[%s] Exported data to %s", job.DsCfg.DsKey(), job.ctx.CsvFileName))
 		return
 	}
 
 	// Some DDL return nothing
 	if len(sqlColumns) == 0 && len(sqlResultLines) == 0 {
-		job.Print(" OK")
+		job.PrintAfterDone(" OK")
 	}
 
 	// Format sql results
 	if len(sqlColumns) != 0 && len(sqlResultLines) != 0 {
-		job.Print(job.formatSqlResult(sqlColumns, sqlResultLines))
+		job.PrintAfterDone(job.formatSqlResult(sqlColumns, sqlResultLines))
 	}
 }
 

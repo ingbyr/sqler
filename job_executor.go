@@ -60,6 +60,7 @@ func (je *JobExecutor) Submit(job Job, jobGroupId int) {
 func (je *JobExecutor) WaitForNoRemainJob() {
 	je.jobWg.Wait()
 	je.doneJobWg.Wait()
+	je.printer.Wait()
 }
 
 func (je *JobExecutor) Shutdown(wait bool) {
@@ -83,6 +84,9 @@ func (je *JobExecutor) handleJob(jobChan chan Job) {
 			return
 		case job := <-jobChan:
 			job.BeforeExec()
+			for _, msg := range job.BeforeOutput() {
+				printer.Info(msg)
+			}
 			job.Exec()
 			if job.Error() != nil {
 				je.hasError.Store(true)
@@ -102,14 +106,12 @@ func (je *JobExecutor) handleDoneJob() {
 		case doneJob := <-je.doneJobCh:
 			doneJob.Wait()
 			doneJob.AfterDone()
-			output := doneJob.DoneOutput()
-			for _, out := range output {
+			for _, out := range doneJob.DoneOutput() {
 				printer.Info(out)
 			}
 			if doneJob.Error() != nil {
 				printer.Error("", doneJob.Error())
 			}
-			printer.Info("")
 			je.doneJobWg.Done()
 		}
 	}

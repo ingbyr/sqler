@@ -107,13 +107,13 @@ func cli() {
 		fmt.Println("Version:", Version)
 		fmt.Println("Build Time:", BuildTime)
 		fmt.Println("Build By:", BuildBy)
-		os.Exit(0)
+		return
 	}
 
 	if flagSqlFile != "" {
 		doActions = true
 		initComponents()
-		printer.Info(fmt.Sprintf("Execute sql file: %s\n", flagSqlFile))
+		printer.Info(fmt.Sprintf("Execute sql file: %s", flagSqlFile))
 		if flagOutputFile == "" {
 			stmts, err := LoadSqlFile(flagSqlFile)
 			if err != nil {
@@ -147,6 +147,7 @@ func cli() {
 			}
 			execSql(jobCtx, stmt)
 		}
+		return
 	}
 
 	if flagEnc != "" {
@@ -154,7 +155,7 @@ func cli() {
 		aes := pkg.NewAes(key, []byte(""))
 		hex := aes.EncAsHex(flagEnc)
 		fmt.Println(hex)
-		os.Exit(0)
+		return
 	}
 
 	if flagDec != "" {
@@ -162,7 +163,7 @@ func cli() {
 		aes := pkg.NewAes(key, []byte(""))
 		data := aes.DecAsStr(flagDec)
 		fmt.Println(data)
-		os.Exit(0)
+		return
 	}
 
 	if flagGenHexAesKey {
@@ -172,7 +173,7 @@ func cli() {
 			panic(err)
 		}
 		fmt.Println(hex.EncodeToString(bytes))
-		os.Exit(0)
+		return
 	}
 
 	if flagBdiff {
@@ -419,4 +420,5 @@ func splitBySpacesWithQuotes(input string) []string {
 
 func main() {
 	cli()
+	fmt.Println("Bye")
 }
