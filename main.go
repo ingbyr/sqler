@@ -7,13 +7,14 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"github.com/c-bata/go-prompt"
-	"github.com/olekukonko/tablewriter"
 	"os"
 	"sqler/pkg"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/c-bata/go-prompt"
+	"github.com/olekukonko/tablewriter"
 )
 
 var (
@@ -420,5 +421,7 @@ func splitBySpacesWithQuotes(input string) []string {
 
 func main() {
 	cli()
-	printer.Info("Execution log is in: " + printer.LogFilePath())
+	if printer != nil {
+		printer.Info("Execution log is in: " + printer.LogFilePath())
+	}
 }
