@@ -9,7 +9,9 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "."
+            "program": ".",
+            "console": "integratedTerminal",
+            "args": ["-key", "796debf8ad7b70607091ee08c8b27ff4", "-c", "config-sqlite.yml", "-i"]
         }
     ]
 }
