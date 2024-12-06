@@ -2,7 +2,8 @@ package main
 
 import (
 	"bufio"
-	"github.com/c-bata/go-prompt"
+	"github.com/elk-language/go-prompt"
+	"github.com/elk-language/go-prompt/strings"
 	"os"
 	"path/filepath"
 	"sqler/pkg"
@@ -12,9 +13,14 @@ var (
 	promptSuggest []prompt.Suggest
 )
 
-func completer(d prompt.Document) []prompt.Suggest {
-	return prompt.FilterHasPrefix(promptSuggest, d.GetWordBeforeCursor(), true)
+func completer(doc prompt.Document) (suggestions []prompt.Suggest, startChar, endChar strings.RuneNumber) {
+	suggestions = prompt.FilterHasPrefix(promptSuggest, doc.GetWordBeforeCursor(), true)
+	return
 }
+
+//func completer(d prompt2.Document) []prompt.Suggest {
+//	return prompt.FilterHasPrefix(promptSuggest, d.GetWordBeforeCursor(), true)
+//}
 
 func initPromptSuggest(tms []*TableMeta, cms []*ColumnMeta) {
 	commands := cliCommandSuggests()

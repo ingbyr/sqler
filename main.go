@@ -8,12 +8,13 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"sqler/pkg"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/c-bata/go-prompt"
+	"github.com/elk-language/go-prompt"
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -94,7 +95,7 @@ func initSqler(override bool) {
 		if err := sqler.loadSchema(); err != nil {
 			fmt.Println("Failed to load schema: " + err.Error())
 		}
-		//initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
+		initPromptSuggest(sqler.tableMetas, sqler.columnMeats)
 		sqlStmtCache = new(strings.Builder)
 	}
 }
@@ -199,12 +200,12 @@ func cli() {
 		initComponents()
 		p := prompt.New(
 			executor,
-			completer,
-			prompt.OptionLivePrefix(func() (prefix string, useLivePrefix bool) {
-				return currentPrefix(), true
+			prompt.WithCompleter(completer),
+			prompt.WithPrefixCallback(func() string {
+				return currentPrefix()
 			}),
-			prompt.OptionTitle("sqler"),
-			prompt.OptionBreakLineCallback(func(document *prompt.Document) {
+			prompt.WithTitle("sqler"),
+			prompt.WithBreakLineCallback(func(document *prompt.Document) {
 				printer.Log(currentPrefix() + document.Text)
 			}),
 		)
@@ -419,7 +420,15 @@ func splitBySpacesWithQuotes(input string) []string {
 	return parts
 }
 
+func handleExit() {
+	rawModeOff := exec.Command("/bin/stty", "-raw", "echo")
+	rawModeOff.Stdin = os.Stdin
+	_ = rawModeOff.Run()
+	rawModeOff.Wait()
+}
+
 func main() {
+	defer handleExit()
 	cli()
 	if printer != nil {
 		printer.Info("Execution log is in: " + printer.LogFilePath())

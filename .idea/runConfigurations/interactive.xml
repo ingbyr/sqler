@@ -10,6 +10,7 @@
     <package value="sqler" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$/main.go" />
+    <pty_enabled value="true" />
     <method v="2" />
   </configuration>
 </component>
