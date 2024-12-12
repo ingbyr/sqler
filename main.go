@@ -329,16 +329,17 @@ func executor(line string) {
 			return
 		}
 		defer csvFile.Close()
-		var sqlStmt string
+		var stmts []string
 		sqlFileName := parts[2]
 		if strings.HasSuffix(sqlFileName, ".sql") {
-			sqlStmt, err = LoadOneSqlFile(sqlFileName)
+			stmts, err = LoadSqlFile(sqlFileName)
 			if err != nil {
 				printer.Error("Failed to load sql "+sqlFileName, err)
 				return
 			}
 		} else {
-			sqlStmt, _ = strings.CutSuffix(sqlFileName, ";")
+			stmt, _ := strings.CutSuffix(sqlFileName, ";")
+			stmts = []string{stmt}
 		}
 		sqlJobCtx := &JobCtx{
 			StopWhenError:      false,
@@ -349,7 +350,7 @@ func executor(line string) {
 			CsvFileHeaderWrote: false,
 			CsvFileLock:        &sync.Mutex{},
 		}
-		execSql(sqlJobCtx, sqlStmt)
+		execSql(sqlJobCtx, stmts...)
 		return
 	}
 
