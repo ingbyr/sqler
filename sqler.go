@@ -59,6 +59,7 @@ func (s *Sqler) ExecSerial(jobCtx *JobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
+		jobCtx.CsvFileHeaderWrote = false
 		for dbId := range s.dbs {
 			jobId++
 			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], jobCtx)
@@ -73,6 +74,7 @@ func (s *Sqler) ExecPara(jobCtx *JobCtx, stmts ...string) {
 	jobSize := s.totalStmtSize(len(stmts))
 	jobId := 0
 	for _, stmt := range stmts {
+		jobCtx.CsvFileHeaderWrote = false
 		for dbId := range s.dbs {
 			jobId++
 			job := NewSqlJob(stmt, jobId, jobSize, s.cfg.DataSources[dbId], s.dbs[dbId], jobCtx)

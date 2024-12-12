@@ -36,9 +36,11 @@ func LoadStmtsFromFile(sqlFile *os.File) []string {
 	var builder strings.Builder
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
+		// Comment line
 		if strings.HasPrefix(line, "#") || strings.HasPrefix(line, "--") {
 			continue
 		}
+		// Sql end line;
 		if strings.HasSuffix(line, ";") {
 			builder.WriteString(line[:len(line)-1])
 			stmts = append(stmts, builder.String())

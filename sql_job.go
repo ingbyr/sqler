@@ -120,6 +120,7 @@ func (job *SqlJob) exportDataToCsv(headers []string, rows [][]string) {
 	job.ctx.CsvFileLock.Lock()
 	defer job.ctx.CsvFileLock.Unlock()
 	if !job.ctx.CsvFileHeaderWrote {
+		job.ctx.CsvFile.Write([]string{">>>", job.Stmt})
 		job.ctx.CsvFile.Write(append(headers, "Data Source"))
 		job.ctx.CsvFileHeaderWrote = true
 	}

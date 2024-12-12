@@ -128,7 +128,7 @@ func cli() {
 				printer.Info("Output file must be csv file")
 				return
 			}
-			stmt, err := LoadOneSqlFile(flagSqlFile)
+			stmts, err := LoadSqlFile(flagSqlFile)
 			if err != nil {
 				printer.Error("Failed to load sql file "+flagSqlFile, err)
 				return
@@ -147,7 +147,7 @@ func cli() {
 				CsvFileHeaderWrote: false,
 				CsvFileLock:        &sync.Mutex{},
 			}
-			execSql(jobCtx, stmt)
+			execSql(jobCtx, stmts...)
 		}
 		return
 	}
