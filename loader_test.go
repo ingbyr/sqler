@@ -10,6 +10,6 @@ func TestLoadSqlFile(t *testing.T) {
 	as := assert.New(t)
 	sqlFile, err := os.Open("tmp.sql")
 	as.NoError(err)
-	stmts := LoadStmtsFromFile(sqlFile)
+	stmts, _ := LoadStmtsFromFile(sqlFile)
 	as.Equal(5, len(stmts))
 }

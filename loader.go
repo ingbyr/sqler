@@ -7,30 +7,18 @@ import (
 	"strings"
 )
 
-func LoadOneSqlFile(sqlFilePath string) (string, error) {
-	stmts, err := LoadSqlFile(sqlFilePath)
-	if err != nil {
-		return "", err
-	}
-	if len(stmts) != 1 {
-		err := errors.New("only support 1 sql in file")
-		return "", err
-	}
-	return stmts[0], nil
-}
-
 func LoadSqlFile(sqlFilePath string) ([]string, error) {
 	sqlFile, err := os.Open(sqlFilePath)
 	if err != nil {
 		return nil, err
 	}
 	printer.Info("Loading file " + sqlFilePath)
-	stmts := LoadStmtsFromFile(sqlFile)
+	stmts, e := LoadStmtsFromFile(sqlFile)
 	printer.Info("Loaded file " + sqlFilePath)
-	return stmts, nil
+	return stmts, e
 }
 
-func LoadStmtsFromFile(sqlFile *os.File) []string {
+func LoadStmtsFromFile(sqlFile *os.File) ([]string, error) {
 	scanner := bufio.NewScanner(sqlFile)
 	stmts := make([]string, 0)
 	var builder strings.Builder
@@ -52,5 +40,8 @@ func LoadStmtsFromFile(sqlFile *os.File) []string {
 			builder.Write([]byte(" "))
 		}
 	}
-	return stmts
+	if builder.Len() > 0 {
+		return stmts, errors.New("Sql must end with ';'")
+	}
+	return stmts, nil
 }
